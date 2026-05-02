@@ -20,9 +20,12 @@ int main() {
 
         // Step 1: Check if the graph is planar
         cout << "Graph created. Checking planarity..." << endl;
-        if (!PLANAR(G)) {
+        list<edge> reverse_edges;
+        G.make_bidirected(reverse_edges);
+        if (!PLANAR(G, true)) {
             cout << "The graph is not planar. Please edit the graph to make it planar." << endl;
             gw.message("The graph is not planar. Please edit the graph to make it planar.");
+            forall(e, reverse_edges) { G.del_edge(e); }
             continue;
         }
 
