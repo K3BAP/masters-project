@@ -270,13 +270,13 @@ int main() {
                     bends_array[real_in_edges[0]].append(point(x_edge[real_in_edges[0]] * grid_size, y_v * grid_size));
                     cout << "[DEBUG] -> Ganz linke Kante knickt ab in den Left Port." << endl;
                     
-                    bends_array[real_in_edges[3]].append(point(x_edge[real_in_edges[3]] * grid_size, y_v * grid_size));
-                    cout << "[DEBUG] -> Ganz rechte Kante knickt ab in den Right Port." << endl;
+                    bends_array[real_in_edges[2]].append(point(x_edge[real_in_edges[2]] * grid_size, y_v * grid_size));
+                    cout << "[DEBUG] -> Kante 3 knickt ab in den Right Port." << endl;
                     
                     // The Hook
-                    bends_array[real_in_edges[2]].append(point(x_edge[real_in_edges[2]] * grid_size, (y_v + 1) * grid_size));
-                    bends_array[real_in_edges[2]].append(point(x_node[v] * grid_size, (y_v + 1) * grid_size));
-                    cout << "[DEBUG] -> THE HOOK! Kante 3 von links wird ueber den Knoten geworfen (Hoehe y=" << y_v + 1 << ") und faellt in den Top Port." << endl;
+                    bends_array[real_in_edges[3]].append(point(x_edge[real_in_edges[3]] * grid_size, (y_v + 1) * grid_size));
+                    bends_array[real_in_edges[3]].append(point(x_node[v] * grid_size, (y_v + 1) * grid_size));
+                    cout << "[DEBUG] -> THE HOOK! Rechteste Kante wird ueber den Knoten geworfen (Hoehe y=" << y_v + 1 << ") und faellt in den Top Port." << endl;
                     break;
             }
 
@@ -334,6 +334,39 @@ int main() {
                     cout << "[DEBUG]    - Rechte Kante: Right Port (Spalte " << right_col + 1 << ")" << endl;
                     break;
                 }
+                case 4: {
+                    cout << "[DEBUG] Fall 4: Drei Aus-Kanten. Alle ausgehenden Ports (Links, Oben, Rechts) werden benoetigt, plus ein Haken am unteren Port!" << endl;
+                    
+                    int right_col = x_node[v] + 1;
+                    cout << "[DEBUG] -> Shift 1: Mache Platz fuer die rechte Kante auf Spalte x=" << right_col << "." << endl;
+                    shift_right(right_col, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
+
+                    cout << "[DEBUG] -> Shift 2: Mache Platz fuer die rechte Kante auf Spalte x=" << right_col + 1 << "." << endl;
+                    shift_right(right_col + 1, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
+                    
+                    int left_col = x_node[v];
+                    cout << "[DEBUG] -> Shift 3: Mache Platz fuer die linke Kante auf Spalte x=" << left_col << "." << endl;
+                    shift_right(left_col, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
+                    
+                    x_edge[real_out_edges[0]] = left_col;         
+                    x_edge[real_out_edges[1]] = x_node[v];        
+                    x_edge[real_out_edges[2]] = right_col + 1;
+                    x_edge[real_out_edges[3]] = right_col + 2;
+                    
+                    bends_array[real_out_edges[0]].append(point(left_col * grid_size, y_v * grid_size));
+                    bends_array[real_out_edges[2]].append(point((right_col + 1) * grid_size, y_v * grid_size));
+
+                    // Bottom hook
+                    bends_array[real_out_edges[3]].append(point(x_node[v] * grid_size, (y_v - 0.5) * grid_size));
+                    bends_array[real_out_edges[3]].append(point((right_col + 2) * grid_size, (y_v - 0.5) * grid_size));
+                    
+                    cout << "[DEBUG] -> Zuweisung komplett:" << endl;
+                    cout << "[DEBUG]    - Linke Kante: Left Port (Spalte " << left_col << ")" << endl;
+                    cout << "[DEBUG]    - Mittlere Kante: Top Port (Spalte " << x_node[v] << ")" << endl;
+                    cout << "[DEBUG]    - Rechte Kante: Right Port (Spalte " << right_col + 1 << ")" << endl;
+                    cout << "[DEBUG]    - Rechteste Kante: Bottom Port Hook (Spalte " << right_col + 2 << ")" << endl;
+                    break;
+                }
             }
 
             cout << "[DEBUG] Füge Spalten für Ghost-Out-Edges hinzu. all_out_edges.size() = " << all_out_edges.size() << ", real_out_edges.size() = " << real_out_edges.size() << ", x_max = " << x_max << endl;
@@ -377,9 +410,9 @@ int main() {
         gw.del_messages();
         
         // Alle zusätzlich eingefügten Kanten (Dummy-Reversals und Biconnected-Edges) entfernen, sowie die temporären Reversals der make_bidirected-Phase entfernen
-        forall(e, reverse_edges) { G.del_edge(e); }
-        forall(e, dummy_reversals) { G.del_edge(e); }
-        forall(e, biconnected_edges) { G.del_edge(e); }
+        G.del_edges(reverse_edges);
+        G.del_edges(dummy_reversals);
+        G.del_edges(biconnected_edges);
         reverse_edges.clear(); 
         dummy_reversals.clear();
         biconnected_edges.clear();
