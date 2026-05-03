@@ -188,6 +188,18 @@ int main() {
                 }
             }
 
+            else if (st_numbering[v] == 1) {
+                cout << "[DEBUG] Bearbeite globalen Startknoten (ST=1), suche Anker für Out-Liste..." << endl;
+                for (int i = 0; i < deg; i++) {
+                    edge current_e = cycle[i];
+                    if (st_numbering[G.opposite(v, current_e)] == st_list.size()) {
+                        cout << "[DEBUG] Gefunden: Kante " << G.index(current_e) << " verbindet Startknoten mit globalem Zielknoten. Setze Startindex auf " << i << "." << endl;
+                        start_idx = i; 
+                        break;
+                    }
+                }
+            }
+
             for (int i = 0; i < deg; i++) {
                 edge current_e = cycle[(start_idx + i) % deg];
                 if (st_numbering[G.opposite(v, current_e)] > y_v) {
