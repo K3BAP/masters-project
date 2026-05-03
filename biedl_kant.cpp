@@ -107,11 +107,15 @@ int main() {
         list<edge> biconnected_edges = Make_Biconnected(G);
         list<edge> dummy_reversals;
 
+        edge_array<bool> is_dummy(G, false);
+
         forall(e, biconnected_edges) {
             edge rev = G.new_edge(G.target(e), G.source(e));
             G.set_reversal(e, rev);
             G.set_reversal(rev, e);
             dummy_reversals.append(rev);
+            is_dummy[rev] = true;
+            is_dummy[e] = true;
         }
         
         // -------------------------------------------------------------
@@ -122,6 +126,7 @@ int main() {
         list<node> st_list;
         
         // Nutzt deine manuelle Auswahl aus deinem Snippet
+        // TODO: Use optimal_st_edge instead of hardcoded edge if needed
         if (!ST_NUMBERING(G, st_numbering, st_list)) {
             gw.message("ST-Numbering fehlgeschlagen!");
             forall(e, dummy_reversals) { G.del_edge(e); }
@@ -129,15 +134,6 @@ int main() {
             forall(e, reverse_edges) { G.del_edge(e); }
             continue;
         }
-
-        // =============================================================
-        // LÖSUNGS-FIX: Dummys VOR dem Routing löschen!
-        // =============================================================
-        cout << "[DEBUG] Lösche Dummy-Kanten vor dem Routing..." << endl;
-        forall(e, dummy_reversals) { G.del_edge(e); }
-        dummy_reversals.clear();
-        forall(e, biconnected_edges) { G.del_edge(e); }
-        biconnected_edges.clear();
 
         forall_nodes(v, G) {
             gw.set_label(v, string("%d (%d)", G.index(v), st_numbering[v]));
@@ -156,24 +152,30 @@ int main() {
 
         forall(v, st_list) {
             int y_v = st_numbering[v];
+            cout << "[DEBUG] Bearbeite Knoten " << G.index(v) << ": st_num=" << y_v << endl;
             
-            std::vector<edge> in_edges;
-            std::vector<edge> cycle;
+            std::vector<edge> real_in_edges; // Tatsächliche In-Edges
+            std::vector<edge> ghost_in_edges; // In-Edges, die durch make_biconnected bzw. make_bidirected entstanden sind und später gelöscht werden.
+            std::vector<edge> cycle; 
 
             forall_adj_edges(e, v) {
                 cycle.push_back(e);
                 node w = G.opposite(v, e);
                 if (st_numbering[w] < y_v) {
                     edge rev = G.reversal(e);
-                    if (rev != nil) in_edges.push_back(rev); 
+                    if (rev != nil) {
+                        if (is_dummy[rev]) ghost_in_edges.push_back(rev);
+                        else real_in_edges.push_back(rev);
+                    }
                 }
             }
 
-            std::sort(in_edges.begin(), in_edges.end(), [&x_edge](edge a, edge b) {
+            std::sort(real_in_edges.begin(), real_in_edges.end(), [&x_edge](edge a, edge b) {
                 return x_edge[a] < x_edge[b];
             });
 
-            std::vector<edge> out_edges;
+            std::vector<edge> real_out_edges;
+            std::vector<edge> all_out_edges;
             int deg = cycle.size();
             int start_idx = 0; 
 
@@ -203,17 +205,17 @@ int main() {
             for (int i = 0; i < deg; i++) {
                 edge current_e = cycle[(start_idx + i) % deg];
                 if (st_numbering[G.opposite(v, current_e)] > y_v) {
-                    out_edges.push_back(current_e);
+                    if (!is_dummy[current_e]) real_out_edges.push_back(current_e);
+                    all_out_edges.push_back(current_e);
                 }
             }
 
-            int in_count = in_edges.size();
-            int out_count = out_edges.size();
+            int in_count = real_in_edges.size();
+            int out_count = real_out_edges.size();
 
             // ==========================================
             // --- IN-EDGES VERTEILEN ---
             // ==========================================
-            cout << "[DEBUG] Bearbeite Knoten " << G.index(v) << ": st_num=" << y_v << endl;
             cout << "[DEBUG] xmax bisher: " << x_max << endl;
             cout << "[DEBUG] --- IN-EDGES VERTEILEN (in_count = " << in_count << ") ---" << endl;
             switch (in_count) {
@@ -223,51 +225,57 @@ int main() {
                         x_node[v] = 0; 
                         cout << "[DEBUG] -> Ist der globale Startknoten (ST=1). Setze Spalte x=" << x_node[v] << "." << endl;
                     } else {
-                        x_node[v] = ++x_max; 
-                        cout << "[DEBUG] -> Ist ein lokales Minimum (z.B. nach Ghost-Edge-Löschung). Erhält neue Spalte ganz rechts: x=" << x_node[v] << "." << endl;
+                        if (!ghost_in_edges.empty()) {
+                            // Keine normale In-Edge vorhanden: Müssen die Ghost-Edge zur Orientierung nutzen, um das planare Embedding beizubehalten
+                            x_node[v] = x_edge[ghost_in_edges.front()];
+                            cout << "[DEBUG] -> Kein echter In-Edge, aber " << ghost_in_edges.size() << " Ghost-In-Edges gefunden. Erbe Spalte x=" << x_node[v] << " von erstem Ghost-In-Edge." << endl;
+                        } else {
+                            x_node[v] = ++x_max; 
+                            cout << "[DEBUG] FEHLER! Nicht-Startknoten ohne in-edges! Erhält neue Spalte ganz rechts: x=" << x_node[v] << "." << endl;
+                        }
                     }
                     break;
 
                 case 1: 
-                    x_node[v] = x_edge[in_edges[0]]; 
+                    x_node[v] = x_edge[real_in_edges[0]]; 
                     cout << "[DEBUG] Fall 1: Eine In-Kante. Knoten erbt direkt die Spalte x=" << x_node[v] << " (Bottom Port)." << endl;
                     break;
 
                 case 2:
-                    x_node[v] = x_edge[in_edges[1]];
+                    x_node[v] = x_edge[real_in_edges[1]];
                     cout << "[DEBUG] Fall 2: Zwei In-Kanten." << endl;
                     cout << "[DEBUG] -> Rechte Kante wird Stamm. Knoten zieht auf Spalte x=" << x_node[v] << " (Bottom Port)." << endl;
                     
-                    bends_array[in_edges[0]].append(point(x_edge[in_edges[0]] * grid_size, y_v * grid_size));
-                    cout << "[DEBUG] -> Linke Kante (kommt von x=" << x_edge[in_edges[0]] << ") knickt horizontal ab in den Left Port." << endl;
+                    bends_array[real_in_edges[0]].append(point(x_edge[real_in_edges[0]] * grid_size, y_v * grid_size));
+                    cout << "[DEBUG] -> Linke Kante (kommt von x=" << x_edge[real_in_edges[0]] << ") knickt horizontal ab in den Left Port." << endl;
                     break;
 
                 case 3:
-                    x_node[v] = x_edge[in_edges[1]];
+                    x_node[v] = x_edge[real_in_edges[1]];
                     cout << "[DEBUG] Fall 3: Drei In-Kanten." << endl;
                     cout << "[DEBUG] -> Mittlere Kante wird Stamm. Knoten zieht auf Spalte x=" << x_node[v] << " (Bottom Port)." << endl;
                     
-                    bends_array[in_edges[0]].append(point(x_edge[in_edges[0]] * grid_size, y_v * grid_size));
-                    cout << "[DEBUG] -> Linke Kante (kommt von x=" << x_edge[in_edges[0]] << ") knickt ab in den Left Port." << endl;
+                    bends_array[real_in_edges[0]].append(point(x_edge[real_in_edges[0]] * grid_size, y_v * grid_size));
+                    cout << "[DEBUG] -> Linke Kante (kommt von x=" << x_edge[real_in_edges[0]] << ") knickt ab in den Left Port." << endl;
                     
-                    bends_array[in_edges[2]].append(point(x_edge[in_edges[2]] * grid_size, y_v * grid_size));
-                    cout << "[DEBUG] -> Rechte Kante (kommt von x=" << x_edge[in_edges[2]] << ") knickt ab in den Right Port." << endl;
+                    bends_array[real_in_edges[2]].append(point(x_edge[real_in_edges[2]] * grid_size, y_v * grid_size));
+                    cout << "[DEBUG] -> Rechte Kante (kommt von x=" << x_edge[real_in_edges[2]] << ") knickt ab in den Right Port." << endl;
                     break;
 
                 case 4:
-                    x_node[v] = x_edge[in_edges[1]];
+                    x_node[v] = x_edge[real_in_edges[1]];
                     cout << "[DEBUG] Fall 4: Vier In-Kanten (T-Knoten-Szenario)." << endl;
                     cout << "[DEBUG] -> Kante 2 von links wird Stamm. Knoten zieht auf Spalte x=" << x_node[v] << " (Bottom Port)." << endl;
                     
-                    bends_array[in_edges[0]].append(point(x_edge[in_edges[0]] * grid_size, y_v * grid_size));
+                    bends_array[real_in_edges[0]].append(point(x_edge[real_in_edges[0]] * grid_size, y_v * grid_size));
                     cout << "[DEBUG] -> Ganz linke Kante knickt ab in den Left Port." << endl;
                     
-                    bends_array[in_edges[3]].append(point(x_edge[in_edges[3]] * grid_size, y_v * grid_size));
+                    bends_array[real_in_edges[3]].append(point(x_edge[real_in_edges[3]] * grid_size, y_v * grid_size));
                     cout << "[DEBUG] -> Ganz rechte Kante knickt ab in den Right Port." << endl;
                     
                     // The Hook
-                    bends_array[in_edges[2]].append(point(x_edge[in_edges[2]] * grid_size, (y_v + 1) * grid_size));
-                    bends_array[in_edges[2]].append(point(x_node[v] * grid_size, (y_v + 1) * grid_size));
+                    bends_array[real_in_edges[2]].append(point(x_edge[real_in_edges[2]] * grid_size, (y_v + 1) * grid_size));
+                    bends_array[real_in_edges[2]].append(point(x_node[v] * grid_size, (y_v + 1) * grid_size));
                     cout << "[DEBUG] -> THE HOOK! Kante 3 von links wird ueber den Knoten geworfen (Hoehe y=" << y_v + 1 << ") und faellt in den Top Port." << endl;
                     break;
             }
@@ -282,7 +290,7 @@ int main() {
                     break;
 
                 case 1: 
-                    x_edge[out_edges[0]] = x_node[v]; 
+                    x_edge[real_out_edges[0]] = x_node[v]; 
                     cout << "[DEBUG] Fall 1: Eine Aus-Kante. Schiesst schnurgerade nach oben auf x=" << x_node[v] << " (Top Port)." << endl;
                     break;
 
@@ -293,10 +301,10 @@ int main() {
                     cout << "[DEBUG] -> Shifte alles ab Spalte x=" << right_col << " nach rechts, um Platz auf der rechten Seite zu machen." << endl;
                     shift_right(right_col, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
                     
-                    x_edge[out_edges[0]] = x_node[v];        
-                    x_edge[out_edges[1]] = right_col;        
+                    x_edge[real_out_edges[0]] = x_node[v];        
+                    x_edge[real_out_edges[1]] = right_col;        
                     
-                    bends_array[out_edges[1]].append(point(right_col * grid_size, y_v * grid_size));
+                    bends_array[real_out_edges[1]].append(point(right_col * grid_size, y_v * grid_size));
                     cout << "[DEBUG] -> Linke Kante belegt Top Port (Spalte " << x_node[v] << "), rechte Kante belegt Right Port (Spalte " << right_col << ")." << endl;
                     
                     break;
@@ -313,12 +321,12 @@ int main() {
                     cout << "[DEBUG] -> Shift 2: Mache Platz fuer die linke Kante auf Spalte x=" << left_col << "." << endl;
                     shift_right(left_col, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
                     
-                    x_edge[out_edges[0]] = left_col;         
-                    x_edge[out_edges[1]] = x_node[v];        
-                    x_edge[out_edges[2]] = right_col + 1; // Muss +1 sein, da der 2. Shift die gesamte rechte Seite inkl. right_col verschoben hat!
+                    x_edge[real_out_edges[0]] = left_col;         
+                    x_edge[real_out_edges[1]] = x_node[v];        
+                    x_edge[real_out_edges[2]] = right_col + 1; // Muss +1 sein, da der 2. Shift die gesamte rechte Seite inkl. right_col verschoben hat!
                     
-                    bends_array[out_edges[0]].append(point(left_col * grid_size, y_v * grid_size));
-                    bends_array[out_edges[2]].append(point((right_col + 1) * grid_size, y_v * grid_size));
+                    bends_array[real_out_edges[0]].append(point(left_col * grid_size, y_v * grid_size));
+                    bends_array[real_out_edges[2]].append(point((right_col + 1) * grid_size, y_v * grid_size));
                     
                     cout << "[DEBUG] -> Zuweisung komplett:" << endl;
                     cout << "[DEBUG]    - Linke Kante: Left Port (Spalte " << left_col << ")" << endl;
@@ -327,6 +335,29 @@ int main() {
                     break;
                 }
             }
+
+            cout << "[DEBUG] Füge Spalten für Ghost-Out-Edges hinzu. all_out_edges.size() = " << all_out_edges.size() << ", real_out_edges.size() = " << real_out_edges.size() << ", x_max = " << x_max << endl;
+            // Ghost-Out-Edges virtuell im Raster einfügen
+            {
+                int curr_x = real_out_edges.empty() ? x_node[v] : x_edge[real_out_edges[0]];
+                int i = 0, j = 0;
+
+                while(i < all_out_edges.size()) {
+                    int all_idx = (i < all_out_edges.size()) ? G.index(all_out_edges[i]) : -1;
+                    int real_idx = (j < real_out_edges.size()) ? G.index(real_out_edges[j]) : -1;
+
+                    if (all_idx == real_idx) {
+                        curr_x = x_edge[real_out_edges[j]];
+                        i++; j++;
+                        continue;
+                    }
+
+                    shift_right(curr_x, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
+                    x_edge[all_out_edges[i]] = curr_x++;
+                    i++;
+                } 
+            }
+            
         }
 
         // -------------------------------------------------------------
@@ -345,9 +376,13 @@ int main() {
 
         gw.del_messages();
         
-        // Reverse Edges (Map) erst ganz am Schluss löschen
+        // Alle zusätzlich eingefügten Kanten (Dummy-Reversals und Biconnected-Edges) entfernen, sowie die temporären Reversals der make_bidirected-Phase entfernen
         forall(e, reverse_edges) { G.del_edge(e); }
+        forall(e, dummy_reversals) { G.del_edge(e); }
+        forall(e, biconnected_edges) { G.del_edge(e); }
         reverse_edges.clear(); 
+        dummy_reversals.clear();
+        biconnected_edges.clear();
 
         gw.update_graph(); 
 
