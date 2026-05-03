@@ -7,7 +7,7 @@
 #include <LEDA/graph/graph_alg.h>
 #include <vector>
 #include <algorithm>
-#include <iostream> // Für cout
+#include <iostream> 
 
 using namespace leda;
 using std::cout;
@@ -17,10 +17,9 @@ using std::endl;
 // HILFSFUNKTION: Column Shift für überschneidungsfreies Routing
 // =====================================================================
 void shift_right(int target_x, graph& G, node_array<int>& x_node, edge_array<int>& x_edge, edge_array<list<point>>& bends_array, node_array<int>& st_numbering, int current_st, int& x_max, int grid_size) {
-    // cout << "[DEBUG] Shift Right aufgerufen fuer target_x=" << target_x << endl;
-    if (target_x <= x_max) {
-        x_max++;
-    }
+    
+    x_max++;
+    
     node w;
     forall_nodes(w, G) {
         if (st_numbering[w] <= current_st && x_node[w] >= target_x) x_node[w]++;
@@ -55,7 +54,7 @@ int main() {
     GraphWin gw(G, "Planar Graph Drawing - Biedl-Kant Algorithm");
     gw.set_directed(false);
     gw.set_node_shape(gw_node_shape::rectangle_node);
-    gw.set_node_width(30); 
+    gw.set_node_width(50); 
     gw.set_node_height(30);
     gw.set_node_label_font(gw_font_type::italic_font, 9);
     gw.open(window::center, window::center);
@@ -74,14 +73,12 @@ int main() {
         list<edge> reverse_edges;
         G.make_bidirected(reverse_edges);
         
-        cout << "[DEBUG] Phase 1: Teste Planaritaet..." << endl;
         if (!PLANAR(G, true)) {
             gw.message("Der Graph ist nicht planar. Bitte ändern.");
             forall(e, reverse_edges) { G.del_edge(e); }
             continue;
         }
 
-        cout << "[DEBUG] Phase 1: Teste Knotengrade..." << endl;
         int max_deg = 0;
         node v;
         forall_nodes(v, G) {
@@ -96,7 +93,6 @@ int main() {
         // -------------------------------------------------------------
         // Phase 2: Smart Source/Sink & Biconnectivity
         // -------------------------------------------------------------
-        cout << "[DEBUG] Phase 2: Suche optimalen Start/Ziel..." << endl;
         edge optimal_st_edge = nil;
         edge search_e;
         forall_edges(search_e, G) {
@@ -111,13 +107,10 @@ int main() {
         list<edge> biconnected_edges = Make_Biconnected(G);
         list<edge> dummy_reversals;
 
-        // WICHTIGER FIX: Den neuen Dummy-Kanten Rückkanten geben!
-        cout << "[DEBUG] Erstelle fehlende Reversals fuer Dummys..." << endl;
-        edge dummy_e;
-        forall(dummy_e, biconnected_edges) {
-            edge rev = G.new_edge(G.target(dummy_e), G.source(dummy_e));
-            G.set_reversal(dummy_e, rev);
-            G.set_reversal(rev, dummy_e);
+        forall(e, biconnected_edges) {
+            edge rev = G.new_edge(G.target(e), G.source(e));
+            G.set_reversal(e, rev);
+            G.set_reversal(rev, e);
             dummy_reversals.append(rev);
         }
         
@@ -127,15 +120,28 @@ int main() {
         cout << "[DEBUG] Phase 3: Berechne ST-Numbering..." << endl;
         node_array<int> st_numbering(G);
         list<node> st_list;
-        if (!ST_NUMBERING(G, st_numbering, st_list, optimal_st_edge)) {
-            cout << "[ERROR] ST-Numbering fehlgeschlagen!" << endl;
+        
+        // Nutzt deine manuelle Auswahl aus deinem Snippet
+        if (!ST_NUMBERING(G, st_numbering, st_list)) {
             gw.message("ST-Numbering fehlgeschlagen!");
             forall(e, dummy_reversals) { G.del_edge(e); }
             forall(e, biconnected_edges) { G.del_edge(e); }
             forall(e, reverse_edges) { G.del_edge(e); }
             continue;
         }
-        cout << "[DEBUG] ST-Numbering erfolgreich. Knoten in st_list: " << st_list.size() << endl;
+
+        // =============================================================
+        // LÖSUNGS-FIX: Dummys VOR dem Routing löschen!
+        // =============================================================
+        cout << "[DEBUG] Lösche Dummy-Kanten vor dem Routing..." << endl;
+        forall(e, dummy_reversals) { G.del_edge(e); }
+        dummy_reversals.clear();
+        forall(e, biconnected_edges) { G.del_edge(e); }
+        biconnected_edges.clear();
+
+        forall_nodes(v, G) {
+            gw.set_label(v, string("%d (%d)", G.index(v), st_numbering[v]));
+        }
 
         // -------------------------------------------------------------
         // Phase 4: Biedl-Kant Column Reuse Routing
@@ -150,27 +156,19 @@ int main() {
 
         forall(v, st_list) {
             int y_v = st_numbering[v];
-            cout << "\n[DEBUG] --> Bearbeite Knoten " << G.index(v) << " (ST=" << y_v << ")" << endl;
             
             std::vector<edge> in_edges;
             std::vector<edge> cycle;
 
-            edge e;
             forall_adj_edges(e, v) {
                 cycle.push_back(e);
                 node w = G.opposite(v, e);
                 if (st_numbering[w] < y_v) {
                     edge rev = G.reversal(e);
-                    if (rev == nil) {
-                        cout << "[FATAL ERROR] Rueckkante (reversal) ist nil fuer Kante zu ST=" << st_numbering[w] << endl;
-                        // Ohne das Crash!
-                        continue;
-                    }
-                    in_edges.push_back(rev); 
+                    if (rev != nil) in_edges.push_back(rev); 
                 }
             }
 
-            cout << "[DEBUG] Kanten sortieren. In_Count = " << in_edges.size() << endl;
             std::sort(in_edges.begin(), in_edges.end(), [&x_edge](edge a, edge b) {
                 return x_edge[a] < x_edge[b];
             });
@@ -199,148 +197,174 @@ int main() {
 
             int in_count = in_edges.size();
             int out_count = out_edges.size();
-            cout << "[DEBUG] Verteile IN=" << in_count << " und OUT=" << out_count << " Kanten" << endl;
 
+            // ==========================================
             // --- IN-EDGES VERTEILEN ---
+            // ==========================================
+            cout << "[DEBUG] Bearbeite Knoten " << G.index(v) << ": st_num=" << y_v << endl;
+            cout << "[DEBUG] xmax bisher: " << x_max << endl;
+            cout << "[DEBUG] --- IN-EDGES VERTEILEN (in_count = " << in_count << ") ---" << endl;
             switch (in_count) {
-                case 0: x_node[v] = 0; break;
-                case 1: x_node[v] = x_edge[in_edges[0]]; break;
+                case 0: 
+                    cout << "[DEBUG] Fall 0: Knoten " << G.index(v) << " hat keine echten eingehenden Kanten." << endl;
+                    if (y_v == 1) {
+                        x_node[v] = 0; 
+                        cout << "[DEBUG] -> Ist der globale Startknoten (ST=1). Setze Spalte x=" << x_node[v] << "." << endl;
+                    } else {
+                        x_node[v] = ++x_max; 
+                        cout << "[DEBUG] -> Ist ein lokales Minimum (z.B. nach Ghost-Edge-Löschung). Erhält neue Spalte ganz rechts: x=" << x_node[v] << "." << endl;
+                    }
+                    break;
+
+                case 1: 
+                    x_node[v] = x_edge[in_edges[0]]; 
+                    cout << "[DEBUG] Fall 1: Eine In-Kante. Knoten erbt direkt die Spalte x=" << x_node[v] << " (Bottom Port)." << endl;
+                    break;
+
                 case 2:
                     x_node[v] = x_edge[in_edges[1]];
+                    cout << "[DEBUG] Fall 2: Zwei In-Kanten." << endl;
+                    cout << "[DEBUG] -> Rechte Kante wird Stamm. Knoten zieht auf Spalte x=" << x_node[v] << " (Bottom Port)." << endl;
+                    
                     bends_array[in_edges[0]].append(point(x_edge[in_edges[0]] * grid_size, y_v * grid_size));
+                    cout << "[DEBUG] -> Linke Kante (kommt von x=" << x_edge[in_edges[0]] << ") knickt horizontal ab in den Left Port." << endl;
                     break;
+
                 case 3:
                     x_node[v] = x_edge[in_edges[1]];
+                    cout << "[DEBUG] Fall 3: Drei In-Kanten." << endl;
+                    cout << "[DEBUG] -> Mittlere Kante wird Stamm. Knoten zieht auf Spalte x=" << x_node[v] << " (Bottom Port)." << endl;
+                    
                     bends_array[in_edges[0]].append(point(x_edge[in_edges[0]] * grid_size, y_v * grid_size));
+                    cout << "[DEBUG] -> Linke Kante (kommt von x=" << x_edge[in_edges[0]] << ") knickt ab in den Left Port." << endl;
+                    
                     bends_array[in_edges[2]].append(point(x_edge[in_edges[2]] * grid_size, y_v * grid_size));
+                    cout << "[DEBUG] -> Rechte Kante (kommt von x=" << x_edge[in_edges[2]] << ") knickt ab in den Right Port." << endl;
                     break;
+
                 case 4:
                     x_node[v] = x_edge[in_edges[1]];
+                    cout << "[DEBUG] Fall 4: Vier In-Kanten (T-Knoten-Szenario)." << endl;
+                    cout << "[DEBUG] -> Kante 2 von links wird Stamm. Knoten zieht auf Spalte x=" << x_node[v] << " (Bottom Port)." << endl;
+                    
                     bends_array[in_edges[0]].append(point(x_edge[in_edges[0]] * grid_size, y_v * grid_size));
+                    cout << "[DEBUG] -> Ganz linke Kante knickt ab in den Left Port." << endl;
+                    
                     bends_array[in_edges[3]].append(point(x_edge[in_edges[3]] * grid_size, y_v * grid_size));
+                    cout << "[DEBUG] -> Ganz rechte Kante knickt ab in den Right Port." << endl;
+                    
+                    // The Hook
                     bends_array[in_edges[2]].append(point(x_edge[in_edges[2]] * grid_size, (y_v + 1) * grid_size));
                     bends_array[in_edges[2]].append(point(x_node[v] * grid_size, (y_v + 1) * grid_size));
-                    break;
-                default:
-                    cout << "[DEBUG] ACHTUNG: Default Case fuer in_count aufgerufen!" << endl;
-                    if(in_count > 0) {
-                        int mid = in_count / 2;
-                        x_node[v] = x_edge[in_edges[mid]];
-                        for (int i = 0; i < in_count; i++) {
-                            if (i != mid) bends_array[in_edges[i]].append(point(x_edge[in_edges[i]] * grid_size, y_v * grid_size));
-                        }
-                    }
+                    cout << "[DEBUG] -> THE HOOK! Kante 3 von links wird ueber den Knoten geworfen (Hoehe y=" << y_v + 1 << ") und faellt in den Top Port." << endl;
                     break;
             }
 
+            // ==========================================
             // --- OUT-EDGES VERTEILEN ---
+            // ==========================================
+            cout << "[DEBUG] --- OUT-EDGES VERTEILEN (out_count = " << out_count << ") ---" << endl;
             switch (out_count) {
-                case 0: break;
-                case 1: x_edge[out_edges[0]] = x_node[v]; break;
+                case 0: 
+                    cout << "[DEBUG] Fall 0: Keine ausgehenden Kanten (Senke / Zielknoten)." << endl;
+                    break;
+
+                case 1: 
+                    x_edge[out_edges[0]] = x_node[v]; 
+                    cout << "[DEBUG] Fall 1: Eine Aus-Kante. Schiesst schnurgerade nach oben auf x=" << x_node[v] << " (Top Port)." << endl;
+                    break;
+
                 case 2: {
-                    int free_col = x_node[v];
-                    shift_right(free_col, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
-                    x_edge[out_edges[0]] = free_col;         
-                    x_edge[out_edges[1]] = x_node[v];        
-                    bends_array[out_edges[0]].append(point(free_col * grid_size, y_v * grid_size));
+                    cout << "[DEBUG] Fall 2: Zwei Aus-Kanten. Verwende oberen und rechten Port." << endl;
+
+                    int right_col = x_node[v] + 1;
+                    cout << "[DEBUG] -> Shifte alles ab Spalte x=" << right_col << " nach rechts, um Platz auf der rechten Seite zu machen." << endl;
+                    shift_right(right_col, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
+                    
+                    x_edge[out_edges[0]] = x_node[v];        
+                    x_edge[out_edges[1]] = right_col;        
+                    
+                    bends_array[out_edges[1]].append(point(right_col * grid_size, y_v * grid_size));
+                    cout << "[DEBUG] -> Linke Kante belegt Top Port (Spalte " << x_node[v] << "), rechte Kante belegt Right Port (Spalte " << right_col << ")." << endl;
+                    
                     break;
                 }
+
                 case 3: {
+                    cout << "[DEBUG] Fall 3: Drei Aus-Kanten. Alle ausgehenden Ports (Links, Oben, Rechts) werden benoetigt!" << endl;
+                    
                     int right_col = x_node[v] + 1;
+                    cout << "[DEBUG] -> Shift 1: Mache Platz fuer die rechte Kante auf Spalte x=" << right_col << "." << endl;
                     shift_right(right_col, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
+                    
                     int left_col = x_node[v];
+                    cout << "[DEBUG] -> Shift 2: Mache Platz fuer die linke Kante auf Spalte x=" << left_col << "." << endl;
                     shift_right(left_col, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
+                    
                     x_edge[out_edges[0]] = left_col;         
                     x_edge[out_edges[1]] = x_node[v];        
-                    x_edge[out_edges[2]] = right_col + 1;    
+                    x_edge[out_edges[2]] = right_col + 1; // Muss +1 sein, da der 2. Shift die gesamte rechte Seite inkl. right_col verschoben hat!
+                    
                     bends_array[out_edges[0]].append(point(left_col * grid_size, y_v * grid_size));
                     bends_array[out_edges[2]].append(point((right_col + 1) * grid_size, y_v * grid_size));
-                    break;
-                }
-                default: {
-                    cout << "[DEBUG] ACHTUNG: Default Case fuer out_count aufgerufen!" << endl;
-                    int mid_out = out_count / 2;
-                    x_edge[out_edges[mid_out]] = x_node[v];
-                    for (int i = 0; i < mid_out; i++) {
-                        int free_col = x_node[v];
-                        shift_right(free_col, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
-                        x_edge[out_edges[i]] = free_col;
-                        bends_array[out_edges[i]].append(point(free_col * grid_size, y_v * grid_size));
-                    }
-                    for (int i = mid_out + 1; i < out_count; i++) {
-                        int right_col = x_node[v] + 1;
-                        shift_right(right_col, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
-                        x_edge[out_edges[i]] = right_col;
-                        bends_array[out_edges[i]].append(point(right_col * grid_size, y_v * grid_size));
-                    }
+                    
+                    cout << "[DEBUG] -> Zuweisung komplett:" << endl;
+                    cout << "[DEBUG]    - Linke Kante: Left Port (Spalte " << left_col << ")" << endl;
+                    cout << "[DEBUG]    - Mittlere Kante: Top Port (Spalte " << x_node[v] << ")" << endl;
+                    cout << "[DEBUG]    - Rechte Kante: Right Port (Spalte " << right_col + 1 << ")" << endl;
                     break;
                 }
             }
         }
-        cout << "[DEBUG] Phase 4 abgeschlossen!" << endl;
 
         // -------------------------------------------------------------
         // Phase 5: Cleanup & Visualisierung
         // -------------------------------------------------------------
-        cout << "[DEBUG] Phase 5: Knicke auf Reverse Edges uebertragen..." << endl;
-        edge edge_iter;
-        forall_edges(edge_iter, G) {
-            if (!bends_array[edge_iter].empty()) {
-                edge rev_e = G.reversal(edge_iter);
+        forall_edges(e, G) {
+            if (!bends_array[e].empty()) {
+                edge rev_e = G.reversal(e);
                 if (rev_e && bends_array[rev_e].empty()) {
-                    list<point> rev_bends = bends_array[edge_iter];
+                    list<point> rev_bends = bends_array[e];
                     rev_bends.reverse(); 
                     bends_array[rev_e] = rev_bends;
                 }
             }
         }
 
-        cout << "[DEBUG] Phase 5: Cleanup der Kanten..." << endl;
         gw.del_messages();
         
-        forall(e, dummy_reversals) { G.del_edge(e); }
-        dummy_reversals.clear();
-
+        // Reverse Edges (Map) erst ganz am Schluss löschen
         forall(e, reverse_edges) { G.del_edge(e); }
         reverse_edges.clear(); 
-        
-        forall(e, biconnected_edges) { G.del_edge(e); }
-        biconnected_edges.clear();
 
-        cout << "[DEBUG] Phase 5: gw.update_graph()..." << endl;
         gw.update_graph(); 
 
-        cout << "[DEBUG] Phase 5: Setze Knotenpositionen und Knicke..." << endl;
-        int max_y = st_list.size() + 1; 
         node u;
-        forall_nodes(u, G) {
-            int inverted_y = (max_y - st_numbering[u] + 1); 
-            gw.set_position(u, point(x_node[u] * grid_size, inverted_y * grid_size));
+        forall(u, st_list) {
+            int final_y = (st_numbering[u] + 1); 
+            gw.set_position(u, point(x_node[u] * grid_size, final_y * grid_size));
         }
 
-        forall_edges(edge_iter, G) {
-            if (!bends_array[edge_iter].empty()) {
+        forall_edges(e, G) {
+            if (!bends_array[e].empty()) {
                 list<point> final_bends;
                 point p;
-                forall(p, bends_array[edge_iter]) {
+                forall(p, bends_array[e]) {
                     double original_st = p.ycoord() / grid_size;
-                    double inverted_y = (max_y - original_st + 1);
-                    final_bends.append(point(p.xcoord(), inverted_y * grid_size));
+                    double final_y = (original_st + 1);
+                    final_bends.append(point(p.xcoord(), final_y * grid_size));
                 }
-                gw.set_bends(edge_iter, final_bends);
+                gw.set_bends(e, final_bends);
             }
         }
 
-        cout << "[DEBUG] Zeichne Graph..." << endl;
         gw.set_flush(true);
         gw.redraw();
-        cout << "[DEBUG] FERTIG!" << endl;
 
         gw.message("Biedl-Kant Algorithmus erfolgreich beendet! OK fuer Reset.");
         gw.edit();
         gw.del_messages();
-        
-        cout << "[DEBUG] Restore Attributes..." << endl;
+
         gw.restore_all_attributes();
         gw.update_graph();
         gw.redraw();
