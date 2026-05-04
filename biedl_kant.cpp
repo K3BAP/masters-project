@@ -148,7 +148,7 @@ int main() {
         node_array<int> x_node(G, 0);                
         
         int x_max = 0; 
-        int grid_size = 60; 
+        int grid_size = 30; 
 
         forall(v, st_list) {
             int y_v = st_numbering[v];
@@ -386,23 +386,48 @@ int main() {
                 }
                 cout << endl;
 
-                int curr_x = real_out_edges.empty() ? x_node[v] : x_edge[real_out_edges[0]];
-                int i = 0, j = 0;
+                // --- GHOST EDGES EINFÜGEN (Post-Routing) ---
+                cout << "[DEBUG] Beginne mit Ghost Edge Injection..." << endl;
 
-                while(i < all_out_edges.size()) {
-                    int all_idx = (i < all_out_edges.size()) ? G.index(all_out_edges[i]) : -1;
-                    int real_idx = (j < real_out_edges.size()) ? G.index(real_out_edges[j]) : -1;
+                int i = 0; // Index für all_out_edges
+                int j = 0; // Index für real_out_edges
 
-                    if (all_idx == real_idx) {
-                        curr_x = x_edge[real_out_edges[j]];
-                        i++; j++;
-                        continue;
+                // Finde eine sichere Startposition für den Fall, dass die allererste Kante ein Dummy ist
+                int curr_x = x_node[v]; 
+                if (!real_out_edges.empty()) {
+                    // Wenn es echte Kanten gibt, orientieren wir uns initial an der ersten
+                    curr_x = x_edge[real_out_edges[0]];
+                }
+
+                while (i < all_out_edges.size()) {
+                    edge current_all_e = all_out_edges[i];
+
+                    // Prüfen, ob die aktuelle Kante aus 'all_out_edges' die nächste echte Kante ist
+                    if (j < real_out_edges.size() && current_all_e == real_out_edges[j]) {
+                        // Es ist eine ECHTE Kante. 
+                        // Wir aktualisieren unsere Referenz-Position (curr_x) auf die Position dieser echten Kante.
+                        curr_x = x_edge[real_out_edges[j]] + 1; 
+                        
+                        cout << "[DEBUG] Echte Kante gefunden an Index " << i << ". Referenz-X verschoben auf " << curr_x << endl;
+                        
+                        i++;
+                        j++;
+                    } else {
+                        // Es ist eine DUMMY Kante (Ghost Edge).
+                        // Wir machen Platz an der Position 'curr_x'
+                        cout << "[DEBUG] Dummy Kante gefunden an Index " << i << ". Shifte rechts ab Spalte " << curr_x << endl;
+                        
+                        shift_right(curr_x, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
+                        
+                        // Die Dummy Kante bekommt die neu geschaffene freie Spalte
+                        x_edge[current_all_e] = curr_x;
+                        
+                        // Referenz-Position für den nächsten potentiellen Dummy weiterrücken
+                        curr_x++; 
+                        i++;
                     }
-
-                    shift_right(curr_x + 1, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
-                    x_edge[all_out_edges[i]] = ++curr_x;
-                    i++;
-                } 
+                }
+                cout << "[DEBUG] Ghost Edge Injection abgeschlossen." << endl;
 
                 cout << "[DEBUG] all_out_edges x_edges: ";
                 for (int i = 0; i < all_out_edges.size(); i++) 
