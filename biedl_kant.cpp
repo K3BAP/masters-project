@@ -399,8 +399,8 @@ int main() {
                         continue;
                     }
 
-                    shift_right(curr_x, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
-                    x_edge[all_out_edges[i]] = curr_x++;
+                    shift_right(curr_x + 1, G, x_node, x_edge, bends_array, st_numbering, y_v, x_max, grid_size);
+                    x_edge[all_out_edges[i]] = ++curr_x;
                     i++;
                 } 
 
@@ -410,6 +410,18 @@ int main() {
                     cout << st_numbering[G.opposite(v, all_out_edges[i])] << "(x=" << x_edge[all_out_edges[i]] << ") ";
                 }
                 cout << endl;
+
+                bool error = false;
+                for (int i = 0, x = -1; i < all_out_edges.size(); i++) 
+                {
+                    if (x_edge[all_out_edges[i]] < x) error = true;
+                    x = x_edge[all_out_edges[i]];
+                }
+
+                if (error) {
+                    cout << "[ERROR] PLANAR EMBEDDING VIOLATED!!!" << endl;
+                    return 1;
+                }
             }
             
         }
