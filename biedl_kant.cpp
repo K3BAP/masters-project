@@ -403,6 +403,13 @@ int main() {
                     x_edge[all_out_edges[i]] = curr_x++;
                     i++;
                 } 
+
+                cout << "[DEBUG] all_out_edges x_edges: ";
+                for (int i = 0; i < all_out_edges.size(); i++) 
+                {
+                    cout << st_numbering[G.opposite(v, all_out_edges[i])] << "(x=" << x_edge[all_out_edges[i]] << ") ";
+                }
+                cout << endl;
             }
             
         }
