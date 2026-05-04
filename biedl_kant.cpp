@@ -372,6 +372,20 @@ int main() {
             cout << "[DEBUG] Füge Spalten für Ghost-Out-Edges hinzu. all_out_edges.size() = " << all_out_edges.size() << ", real_out_edges.size() = " << real_out_edges.size() << ", x_max = " << x_max << endl;
             // Ghost-Out-Edges virtuell im Raster einfügen
             {
+                cout << "[DEBUG] real_out_edges: ";
+                for (int i = 0; i < real_out_edges.size(); i++)
+                {
+                    cout << st_numbering[G.opposite(v, real_out_edges[i])] << "(" << G.index(real_out_edges[i]) << ") ";
+                }
+                cout << endl;
+
+                cout << "[DEBUG] all_out_edges: ";
+                for (int i = 0; i < all_out_edges.size(); i++) 
+                {
+                    cout << st_numbering[G.opposite(v, all_out_edges[i])] << "(" << G.index(all_out_edges[i]) << ") ";
+                }
+                cout << endl;
+
                 int curr_x = real_out_edges.empty() ? x_node[v] : x_edge[real_out_edges[0]];
                 int i = 0, j = 0;
 
