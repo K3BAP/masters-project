@@ -148,7 +148,7 @@ int main() {
         node_array<int> x_node(G, 0);                
         
         int x_max = 0; 
-        int grid_size = 30; 
+        int grid_size = 40; 
 
         forall(v, st_list) {
             int y_v = st_numbering[v];
@@ -274,9 +274,9 @@ int main() {
                     cout << "[DEBUG] -> Kante 3 knickt ab in den Right Port." << endl;
                     
                     // The Hook
-                    bends_array[real_in_edges[3]].append(point(x_edge[real_in_edges[3]] * grid_size, (y_v + 1) * grid_size));
-                    bends_array[real_in_edges[3]].append(point(x_node[v] * grid_size, (y_v + 1) * grid_size));
-                    cout << "[DEBUG] -> THE HOOK! Rechteste Kante wird ueber den Knoten geworfen (Hoehe y=" << y_v + 1 << ") und faellt in den Top Port." << endl;
+                    bends_array[real_in_edges[3]].append(point(x_edge[real_in_edges[3]] * grid_size, (y_v + 0.5) * grid_size));
+                    bends_array[real_in_edges[3]].append(point(x_node[v] * grid_size, (y_v + 0.5) * grid_size));
+                    cout << "[DEBUG] -> THE HOOK! Rechteste Kante wird ueber den Knoten geworfen (Hoehe y=" << y_v + 0.5 << ") und faellt in den Top Port." << endl;
                     break;
             }
 
