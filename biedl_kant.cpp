@@ -152,7 +152,7 @@ int main() {
 
         forall(v, st_list) {
             int y_v = st_numbering[v];
-            cout << "[DEBUG] Bearbeite Knoten " << G.index(v) << ": st_num=" << y_v << endl;
+            cout << "[DEBUG] ####### Bearbeite Knoten " << G.index(v) << ": st_num=" << y_v << endl;
             
             std::vector<edge> real_in_edges; // Tatsächliche In-Edges
             std::vector<edge> ghost_in_edges; // In-Edges, die durch make_biconnected bzw. make_bidirected entstanden sind und später gelöscht werden.
@@ -498,6 +498,8 @@ int main() {
 
         gw.set_flush(true);
         gw.redraw();
+        gw.center_graph();
+        gw.zoom_graph();
 
         gw.message("Biedl-Kant Algorithmus erfolgreich beendet! OK fuer Reset.");
         gw.edit();
