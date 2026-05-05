@@ -118,6 +118,13 @@ int main() {
             is_dummy[e] = true;
         }
         
+        // Re-calculate planar embedding after make_biconnected
+        if (!PLANAR(G, true)) {
+            gw.message("Der Graph ist nach hinzufügen der Kanten nicht planar. Bitte ändern.");
+            forall(e, reverse_edges) { G.del_edge(e); }
+            continue;
+        }
+
         // -------------------------------------------------------------
         // Phase 3: ST-Numbering
         // -------------------------------------------------------------
