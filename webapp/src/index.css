@@ -38,6 +38,7 @@ header h1 { font-size: 17px; margin: 0; white-space: nowrap; }
 .spacer { flex: 1; }
 .status { font-size: 12px; padding: 4px 10px; border-radius: 12px; }
 .status.ok { background: rgba(63, 183, 97, 0.15); color: var(--ok); }
+.status.warn { background: rgba(244, 185, 66, 0.15); color: var(--accent2); }
 .status.bad { background: rgba(225, 87, 89, 0.15); color: var(--bad); }
 
 button {

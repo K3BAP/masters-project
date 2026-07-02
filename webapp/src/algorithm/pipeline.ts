@@ -5,9 +5,10 @@
 import { augmentBiconnected } from './augment';
 import { buildEmbedding, validateInput } from './embedding';
 import { computeGeometry } from './geometry';
+import { planarEmbedding } from './planarity';
 import { route } from './router';
 import { stNumbering } from './stNumbering';
-import type { DrawingResult, InputGraph } from './types';
+import type { DrawingResult, EmbeddedGraph, InputGraph } from './types';
 import { verifyDrawing } from './verifier';
 
 export function computeSlopesDrawing(input: InputGraph): DrawingResult {
@@ -25,13 +26,20 @@ export function computeSlopesDrawing(input: InputGraph): DrawingResult {
     };
   }
 
-  // Eingabe-Gate (Editor prueft dies bereits; hier defensiv)
+  // Eingabe-Gate: Zusammenhang ist Pflicht. Ist die Zeichnung geometrisch
+  // sauber, wird ihre Einbettung uebernommen; sonst berechnet der
+  // Demoucron-Planaritaetstest automatisch eine planare Einbettung
+  // (Pendant zu LEDAs PLANAR(G, true)).
   const issues = validateInput(input);
   if (issues.disconnected) return failed('Der Graph ist nicht zusammenhaengend.');
-  if (!issues.ok) return failed('Die Zeichnung ist nicht kreuzungsfrei.');
-
-  // Einbettung aus der Zeichnung, dann gradbeschraenkte Augmentierung
-  const eg = buildEmbedding(input);
+  let eg: EmbeddedGraph;
+  if (issues.ok) {
+    eg = buildEmbedding(input);
+  } else {
+    const pe = planarEmbedding(input.n, input.edges);
+    if (!pe) return failed('Der Graph ist nicht planar.');
+    eg = pe;
+  }
   const deltaOrig = Math.max(...eg.rot.map((r) => r.length));
   const added = augmentBiconnected(eg);
   if (added < 0) return failed('Bikonnektivitaets-Augmentierung fehlgeschlagen.');

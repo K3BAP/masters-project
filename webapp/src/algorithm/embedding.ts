@@ -54,7 +54,9 @@ function segmentsCross(a: Point, b: Point, c: Point, d: Point): boolean {
 export interface InputIssues {
   crossingPairs: Array<[number, number]>; // Kantenindizes
   vertexOnEdge: Array<[number, number]>;  // [Knoten, Kante]
+  coincident: Array<[number, number]>;    // Knotenpaare (fast) gleicher Position
   disconnected: boolean;
+  /** true = Zeichnung geometrisch sauber; die gezeichnete Einbettung ist nutzbar. */
   ok: boolean;
 }
 
@@ -62,6 +64,15 @@ export interface InputIssues {
 export function validateInput(g: InputGraph): InputIssues {
   const crossingPairs: Array<[number, number]> = [];
   const vertexOnEdge: Array<[number, number]> = [];
+  const coincident: Array<[number, number]> = [];
+
+  for (let a = 0; a < g.n; a++) {
+    for (let b = a + 1; b < g.n; b++) {
+      if (Math.hypot(g.pos[a].x - g.pos[b].x, g.pos[a].y - g.pos[b].y) < 1e-6) {
+        coincident.push([a, b]);
+      }
+    }
+  }
 
   for (let i = 0; i < g.edges.length; i++) {
     const [a, b] = g.edges[i];
@@ -82,8 +93,10 @@ export function validateInput(g: InputGraph): InputIssues {
   return {
     crossingPairs,
     vertexOnEdge,
+    coincident,
     disconnected,
-    ok: crossingPairs.length === 0 && vertexOnEdge.length === 0 && !disconnected,
+    ok: crossingPairs.length === 0 && vertexOnEdge.length === 0 &&
+        coincident.length === 0 && !disconnected,
   };
 }
 
@@ -135,7 +148,9 @@ export function traverseFaces(eg: EmbeddedGraph): FaceCorner[][] {
   for (let e = 0; e < m; e++) {
     for (const dir of [0, 1]) {
       let d = 2 * e + dir;
-      if (visited.has(d)) continue;
+      // Kanten ohne Rotationseintrag (noch nicht eingebettet, z.B.
+      // waehrend des Demoucron-Aufbaus) ueberspringen.
+      if (visited.has(d) || !pos.has(d)) continue;
       const corners: FaceCorner[] = [];
       while (!visited.has(d)) {
         visited.add(d);

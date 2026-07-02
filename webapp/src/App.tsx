@@ -22,7 +22,11 @@ export default function App() {
 
   const issues = useMemo(() => validateInput(graph), [graph]);
 
-  const canRun = graph.n >= 2 && issues.ok;
+  // Kreuzungen blockieren nicht mehr: dann berechnet die Pipeline
+  // automatisch eine planare Einbettung (Demoucron); nur fehlender
+  // Zusammenhang (und n < 2) verhindert den Lauf.
+  const canRun = graph.n >= 2 && !issues.disconnected;
+  const needsAutoEmbedding = canRun && !issues.ok;
 
   const run = () => {
     const res = computeSlopesDrawing(graph);
@@ -40,12 +44,12 @@ export default function App() {
 
   const statusText = graph.n < 2
     ? 'Mindestens zwei Knoten zeichnen.'
-    : issues.crossingPairs.length > 0
-      ? `Zeichnung hat ${issues.crossingPairs.length} Kreuzung(en) – bitte entflechten.`
-      : issues.vertexOnEdge.length > 0
-        ? 'Ein Knoten liegt auf einer fremden Kante.'
-        : issues.disconnected
-          ? 'Der Graph ist nicht zusammenhängend.'
+    : issues.disconnected
+      ? 'Der Graph ist nicht zusammenhängend.'
+      : issues.crossingPairs.length > 0
+        ? `${issues.crossingPairs.length} Kreuzung(en) – planare Einbettung wird automatisch berechnet.`
+        : issues.vertexOnEdge.length > 0 || issues.coincident.length > 0
+          ? 'Entartete Zeichnung – planare Einbettung wird automatisch berechnet.'
           : 'Bereit.';
 
   return (
@@ -56,7 +60,9 @@ export default function App() {
           Bekos, Katsanou, Kindermann, Pavlidi – Theorem 4 (2 Knicke, polynomielle Fläche)
         </span>
         <div className="spacer" />
-        <span className={canRun ? 'status ok' : 'status bad'}>{statusText}</span>
+        <span className={!canRun ? 'status bad' : needsAutoEmbedding ? 'status warn' : 'status ok'}>
+          {statusText}
+        </span>
         <button className="primary" disabled={!canRun} onClick={run}>
           Zeichnung berechnen
         </button>

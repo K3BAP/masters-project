@@ -13,10 +13,13 @@ Verifier (BigInt-Arithmetik) nachprüft.
 
 ## Funktionen
 
-- **Grapheditor**: Knoten setzen, Kanten ziehen, verschieben, löschen; ein exakter
-  Kreuzungs- und Zusammenhangstest fungiert als Planaritäts-Gate. Das Rotationssystem
-  (die Einbettung) wird direkt aus der Zeichnung abgeleitet — dadurch ist kein
-  Planaritätstest à la Boyer-Myrvold nötig.
+- **Grapheditor**: Knoten setzen, Kanten ziehen, verschieben, löschen — mit
+  kontextabhängigen Cursorn und Hover-Feedback. Kreuzungsfreie Zeichnungen behalten
+  ihre gezeichnete Einbettung (Rotationssystem aus der Geometrie). Zeichnungen mit
+  Kreuzungen werden trotzdem akzeptiert: ein Planaritätstest nach
+  **Demoucron-Malgrange-Pertuiset** berechnet automatisch eine planare Einbettung
+  (das Pendant zu LEDAs `PLANAR(G, true)`); nicht-planare Graphen (K₅, K₃,₃, …)
+  werden mit Meldung abgelehnt.
 - **Beispiele + Zufallsgenerator**: Oktaeder (die 3-Steigungen-Ausnahme), Räder,
   Stern, Gitter; zufällige planare Graphen über Delaunay-Triangulierung mit
   Dichteregler.
@@ -39,7 +42,8 @@ npm run build      # Produktions-Build nach dist/
 
 ## Abweichungen gegenüber der C++-Referenz
 
-- Einbettung aus der Zeichnungsgeometrie statt LEDA-Planarisierung.
+- Einbettung aus der Zeichnungsgeometrie (kreuzungsfreie Zeichnungen) bzw.
+  Demoucron-Planarisierung (O(n²)) statt LEDA `PLANAR`.
 - st-Nummerierung über offene Ohren-Dekomposition (statt LEDA `ST_NUMBERING`).
 - Bikonnektivitäts-Augmentierung über **Flächen-Chorden** (Verallgemeinerung der
   Bypass-Kanten aus der C++-Version; vermeidet Gradanhäufung z. B. bei
