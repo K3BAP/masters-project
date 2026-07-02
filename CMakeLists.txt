@@ -51,3 +51,17 @@ target_include_directories(biedl_kant PRIVATE "${LEDA_ROOT_DIR}/incl")
 
 # Binde LEDA ein
 target_link_libraries(biedl_kant PRIVATE LEDA)
+
+# ==========================================
+# Slope-Variante (Bekos et al., Theorem 4)
+# ==========================================
+
+# Interaktive GraphWin-App
+add_executable(biedl_kant_slopes biedl_kant_slopes.cpp slopes_core.cpp)
+target_include_directories(biedl_kant_slopes PRIVATE "${LEDA_ROOT_DIR}/incl")
+target_link_libraries(biedl_kant_slopes PRIVATE LEDA)
+
+# Headless-Stresstest (Algorithmus + geometrischer Verifier)
+add_executable(slopes_test slopes_test.cpp slopes_core.cpp)
+target_include_directories(slopes_test PRIVATE "${LEDA_ROOT_DIR}/incl")
+target_link_libraries(slopes_test PRIVATE LEDA)
