@@ -9,22 +9,24 @@ import { SlopeLegend } from './components/SlopeLegend';
 import { StatsPanel } from './components/StatsPanel';
 import { Stepper } from './components/Stepper';
 import { EXAMPLES } from './examples';
+import { LANGS, useI18n } from './i18n';
 
 export default function App() {
+  const { lang, setLang, t, translateError } = useI18n();
   const [graph, setGraph] = useState<InputGraph>(
     () => structuredClone(EXAMPLES.find((e) => e.id === 'wheel8')!.graph),
   );
   const [result, setResult] = useState<DrawingResult | null>(null);
-  const [step, setStep] = useState(0); // 1..n; n = fertige Zeichnung
+  const [step, setStep] = useState(0); // 1..n; n+1 = Schritt "Fertig"
   const [stale, setStale] = useState(false);
   // In der Ergebnisansicht angeklickter Knoten; wird auch im Editor markiert.
   const [selected, setSelected] = useState<number | null>(null);
 
   const issues = useMemo(() => validateInput(graph), [graph]);
 
-  // Kreuzungen blockieren nicht mehr: dann berechnet die Pipeline
-  // automatisch eine planare Einbettung (Demoucron); nur fehlender
-  // Zusammenhang (und n < 2) verhindert den Lauf.
+  // Kreuzungen blockieren nicht: dann berechnet die Pipeline automatisch
+  // eine planare Einbettung (Demoucron); nur fehlender Zusammenhang
+  // (und n < 2) verhindert den Lauf.
   const canRun = graph.n >= 2 && !issues.disconnected;
   const needsAutoEmbedding = canRun && !issues.ok;
 
@@ -43,28 +45,38 @@ export default function App() {
   };
 
   const statusText = graph.n < 2
-    ? 'Mindestens zwei Knoten zeichnen.'
+    ? t('status_min_nodes')
     : issues.disconnected
-      ? 'Der Graph ist nicht zusammenhängend.'
+      ? t('status_disconnected')
       : issues.crossingPairs.length > 0
-        ? `${issues.crossingPairs.length} Kreuzung(en) – planare Einbettung wird automatisch berechnet.`
+        ? t('status_crossings', { n: issues.crossingPairs.length })
         : issues.vertexOnEdge.length > 0 || issues.coincident.length > 0
-          ? 'Entartete Zeichnung – planare Einbettung wird automatisch berechnet.'
-          : 'Bereit.';
+          ? t('status_degenerate')
+          : t('status_ready');
 
   return (
     <div className="app">
       <header>
-        <h1>Planare Zeichnungen mit ⌈Δ/2⌉ Steigungen</h1>
-        <span className="subtitle">
-          Bekos, Katsanou, Kindermann, Pavlidi – Theorem 4 (2 Knicke, polynomielle Fläche)
-        </span>
+        <h1>{t('app_title')}</h1>
+        <span className="subtitle">{t('app_subtitle')}</span>
         <div className="spacer" />
         <span className={!canRun ? 'status bad' : needsAutoEmbedding ? 'status warn' : 'status ok'}>
           {statusText}
         </span>
+        <div className="lang-switch">
+          {LANGS.map((l) => (
+            <button
+              key={l.id}
+              className={lang === l.id ? 'active' : ''}
+              onClick={() => setLang(l.id)}
+              title={l.id}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
         <button className="primary" disabled={!canRun} onClick={run}>
-          Zeichnung berechnen
+          {t('app_run')}
         </button>
       </header>
 
@@ -80,14 +92,12 @@ export default function App() {
         </section>
 
         <section className="right">
-          {result && !result.ok && <div className="error-banner">{result.error}</div>}
+          {result && !result.ok && (
+            <div className="error-banner">{translateError(result.error ?? '')}</div>
+          )}
           {result && result.ok && (
             <>
-              {stale && (
-                <div className="stale-banner">
-                  Der Graph wurde geändert – Zeichnung neu berechnen.
-                </div>
-              )}
+              {stale && <div className="stale-banner">{t('banner_stale')}</div>}
               <Stepper result={result} step={step} setStep={setStep} />
               <DrawingView
                 result={result}
@@ -103,16 +113,8 @@ export default function App() {
           )}
           {!result && (
             <div className="placeholder">
-              <p>
-                Links einen planaren Graphen zeichnen (oder ein Beispiel laden) und{' '}
-                <em>Zeichnung berechnen</em> drücken.
-              </p>
-              <p>
-                Der Algorithmus erzeugt eine planare Gitterzeichnung mit höchstens zwei Knicken
-                pro Kante und höchstens ⌈Δ/2⌉ Steigungen (⌈Δ/2⌉+1 bei nötiger
-                Bikonnektivitäts-Augmentierung) auf einem O(n) × O(Δn²)-Gitter. Die
-                Schrittansicht zeigt den inkrementellen Aufbau entlang der st-Nummerierung.
-              </p>
+              <p>{t('placeholder_1', { run: t('app_run') })}</p>
+              <p>{t('placeholder_2')}</p>
             </div>
           )}
         </section>

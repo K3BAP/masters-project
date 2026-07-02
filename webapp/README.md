@@ -30,6 +30,8 @@ Verifier (BigInt-Arithmetik) nachprüft.
   erhalten) / maßstabsgetreu; Hilfskanten der Augmentierung einblendbar.
 - **Verifikation**: nach jedem Lauf werden Planarität, ≤ 2 Knicke, die strikte
   Steigungsschranke und die Flächenschranken exakt nachgemessen (PASS/FAIL).
+- **Mehrsprachig**: Deutsch, Englisch und Griechisch; Umschalter in der Kopfzeile
+  (leichtgewichtiges eigenes i18n-Modul in `src/i18n.tsx`, Wahl wird gespeichert).
 
 ## Entwicklung
 

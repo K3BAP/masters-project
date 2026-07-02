@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { InputGraph } from '../algorithm/types';
 import { EXAMPLES } from '../examples';
+import { useI18n } from '../i18n';
+import type { MsgKey } from '../i18n';
 import { randomPlanarGraph } from '../random';
 
 interface Props {
@@ -8,6 +10,7 @@ interface Props {
 }
 
 export function Gallery({ onLoad }: Props) {
+  const { t } = useI18n();
   const [n, setN] = useState(16);
   const [density, setDensity] = useState(0.6);
   const [seed, setSeed] = useState(1);
@@ -16,8 +19,12 @@ export function Gallery({ onLoad }: Props) {
     <div className="gallery">
       <div className="gallery-examples">
         {EXAMPLES.map((ex) => (
-          <button key={ex.id} title={ex.description} onClick={() => onLoad(structuredClone(ex.graph))}>
-            {ex.name}
+          <button
+            key={ex.id}
+            title={t(`example_${ex.id}_desc` as MsgKey)}
+            onClick={() => onLoad(structuredClone(ex.graph))}
+          >
+            {t(`example_${ex.id}_name` as MsgKey)}
           </button>
         ))}
       </div>
@@ -28,7 +35,7 @@ export function Gallery({ onLoad }: Props) {
             onChange={(e) => setN(Number(e.target.value))} />
         </label>
         <label>
-          Dichte = {density.toFixed(2)}
+          {t('gallery_density')} = {density.toFixed(2)}
           <input type="range" min={0} max={1} step={0.05} value={density}
             onChange={(e) => setDensity(Number(e.target.value))} />
         </label>
@@ -38,7 +45,7 @@ export function Gallery({ onLoad }: Props) {
             setSeed(seed + 1);
           }}
         >
-          Zufallsgraph
+          {t('gallery_random')}
         </button>
       </div>
     </div>

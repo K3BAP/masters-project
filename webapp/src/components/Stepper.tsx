@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DrawingResult } from '../algorithm/types';
+import { useI18n } from '../i18n';
 
 interface Props {
   result: DrawingResult;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function Stepper({ result, step, setStep }: Props) {
+  const { t } = useI18n();
   const n = result.stats.n;
   const last = n + 1; // Extraschritt "Fertig": Zeichnung ohne Hervorhebungen
   const [playing, setPlaying] = useState(false);
@@ -31,7 +33,7 @@ export function Stepper({ result, step, setStep }: Props) {
         <button onClick={() => setStep(1)} disabled={step <= 1}>⏮</button>
         <button onClick={() => setStep(clamp(step - 1))} disabled={step <= 1}>◀</button>
         <button onClick={() => setPlaying(!playing)} disabled={step >= last && !playing}>
-          {playing ? '⏸' : '▶ Abspielen'}
+          {playing ? t('stepper_pause') : t('stepper_play')}
         </button>
         <button onClick={() => setStep(clamp(step + 1))} disabled={step >= last}>▶</button>
         <button onClick={() => setStep(last)} disabled={step >= last}>⏭</button>
@@ -40,46 +42,39 @@ export function Stepper({ result, step, setStep }: Props) {
           onChange={(e) => setStep(Number(e.target.value))}
         />
         <span className="step-label">
-          {step > n ? 'Fertig' : `Schritt ${step} / ${n}`}
+          {step > n ? t('stepper_done') : t('stepper_step', { s: step, n })}
         </span>
       </div>
-      <div className="stepper-text">{describeStep(result, step)}</div>
+      <div className="stepper-text">{describeStep(result, step, t)}</div>
     </div>
   );
 }
 
-function describeStep(result: DrawingResult, step: number): string {
+type T = ReturnType<typeof useI18n>['t'];
+
+function describeStep(result: DrawingResult, step: number, t: T): string {
   const n = result.stats.n;
   if (step > n) {
     const s = result.stats;
-    return `Fertig – die Zeichnung ist vollständig: ${s.n} Knoten auf einem ` +
-      `${s.width} × ${s.height}-Gitter mit ${s.slopesUsed} Steigungen und ` +
-      `höchstens zwei Knicken pro Kante.` +
-      (s.augmented
-        ? ' Die gestrichelten Hilfskanten der Augmentierung gehören nicht zum' +
-          ' Endergebnis (Schalter „Hilfskanten" blendet sie aus).'
-        : '');
+    return t('step_finished', { n: s.n, w: s.width, h: s.height, s: s.slopesUsed }) +
+      (s.augmented ? t('step_finished_aug') : '');
   }
   const ev = result.trace[step - 1];
   if (!ev) return '';
-  const shifts = ev.shiftsLeft + ev.shiftsRight;
-  const shiftText = shifts > 0
-    ? ` ${shifts} neue Spalte${shifts === 1 ? '' : 'n'} eingefügt (shift right: ${ev.shiftsLeft} links, ${ev.shiftsRight} rechts).`
+
+  const shifts = ev.shiftsLeft + ev.shiftsRight > 0
+    ? t('step_shifts', { l: ev.shiftsLeft, r: ev.shiftsRight })
     : '';
 
   if (ev.st === 1) {
-    return `Quelle v${ev.v} (st=1) in Zeile 0: ${ev.q} ausgehende Pending-Kanten werden ` +
-      `gegen den Uhrzeigersinn an Ports angelegt; die st-Kante ist die linkeste.` + shiftText;
+    return t('step_source', { v: ev.v, q: ev.q }) + shifts;
   }
   if (ev.st === n) {
-    return `Senke v${ev.v} (st=${n}): alle ${ev.k} Pending-Kanten laufen ein; die Median-Kante ` +
-      `endet vertikal in der Knotenspalte, die übrigen schließen mit geneigten Segmenten an.`;
+    return t('step_sink', { v: ev.v, n, k: ev.k });
   }
-  const inText = ev.k === 1
-    ? 'übernimmt die Spalte seiner einzigen eingehenden Pending-Kante'
-    : `wird über der Median-Kante seiner ${ev.k} eingehenden Pending-Kanten platziert`;
-  const outText = ev.q === 0 ? '' :
-    ` ${ev.q} neue Pending-Kante${ev.q === 1 ? '' : 'n'} nach oben.`;
-  return `Knoten v${ev.v} (st=${ev.st}) ${inText}; die restlichen In-Kanten knicken über ` +
-    `Ports aus S an.${outText}${shiftText}`;
+  const intro = ev.k === 1
+    ? t('step_vertex_single', { v: ev.v, st: ev.st })
+    : t('step_vertex_median', { v: ev.v, st: ev.st, k: ev.k });
+  const out = ev.q > 0 ? t('step_out', { q: ev.q }) : '';
+  return intro + out + shifts;
 }

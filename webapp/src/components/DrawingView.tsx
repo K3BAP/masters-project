@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DrawingResult, Point } from '../algorithm/types';
+import { useI18n } from '../i18n';
 import { slopeColor } from './colors';
 import { svgPoint } from './svgUtils';
 
@@ -20,6 +21,7 @@ interface Props {
  *  - massstabsgetreu: isotropes Gitter (wahre Steigungen).
  */
 export function DrawingView({ result, step, selected, onSelect }: Props) {
+  const { t } = useI18n();
   const svgRef = useRef<SVGSVGElement>(null);
   const [compact, setCompact] = useState(true);
   const [showAug, setShowAug] = useState(true);
@@ -175,14 +177,14 @@ export function DrawingView({ result, step, selected, onSelect }: Props) {
       <div className="drawing-toolbar">
         <label>
           <input type="checkbox" checked={compact} onChange={(e) => setCompact(e.target.checked)} />
-          kompakt (y gestaucht)
+          {t('view_compact')}
         </label>
         <label>
           <input type="checkbox" checked={showAug} onChange={(e) => setShowAug(e.target.checked)} />
-          Hilfskanten
+          {t('view_aug')}
         </label>
         <div className="spacer" />
-        <button onClick={() => setTf({ k: 1, x: 0, y: 0 })}>Ansicht zurücksetzen</button>
+        <button onClick={() => setTf({ k: 1, x: 0, y: 0 })}>{t('view_reset')}</button>
       </div>
       <svg
         ref={svgRef}

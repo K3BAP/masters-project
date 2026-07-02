@@ -55,11 +55,24 @@ button:disabled { opacity: 0.45; cursor: default; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+.lang-switch { display: flex; }
+.lang-switch button {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 0;
+}
+.lang-switch button:first-child { border-radius: 6px 0 0 6px; }
+.lang-switch button:last-child { border-radius: 0 6px 6px 0; }
+.lang-switch button + button { border-left: none; }
+
 /* ---------------- Layout ---------------- */
 main {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(320px, 420px) minmax(360px, 1fr);
+  /* 480px lässt die Editor-Werkzeugleiste auch mit den längeren
+     griechischen Beschriftungen (Μετακίνηση, Καθαρισμός, …) ohne
+     Umbruch in einer Zeile Platz finden. */
+  grid-template-columns: minmax(320px, 480px) minmax(360px, 1fr);
   gap: 12px;
   padding: 12px;
   min-height: 0;
@@ -97,7 +110,12 @@ main {
   flex: 1;
   min-height: 0;
 }
-.editor-toolbar { display: flex; gap: 6px; }
+.editor-toolbar { display: flex; flex-wrap: wrap; gap: 6px; row-gap: 6px; }
+/* margin-left:auto wird pro Flex-Zeile aufgeloest: bleibt der Button in der
+   ersten Zeile, wird er dort nach rechts geschoben; bricht er um, ist er
+   in der neuen Zeile rechtsbuendig (statt links wie bei einem Spacer-Div,
+   der beim Umbruch mit auf die naechste Zeile rutschen wuerde). */
+.editor-toolbar .push-right { margin-left: auto; }
 .editor-canvas {
   background: #fbfbf8;
   border-radius: 6px;

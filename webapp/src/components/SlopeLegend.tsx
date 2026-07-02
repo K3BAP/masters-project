@@ -1,8 +1,10 @@
 import { slopeSet } from '../algorithm/router';
+import { useI18n } from '../i18n';
 import { slopeColor, VERTICAL_COLOR } from './colors';
 
 /** Port-Faecher: die Steigungsmenge S als Strahlen mit Farblegende. */
 export function SlopeLegend({ deltaEff }: { deltaEff: number }) {
+  const { t } = useI18n();
   const slopes = slopeSet(deltaEff);
   const size = 170, c = size / 2, r = size / 2 - 24;
 
@@ -13,7 +15,7 @@ export function SlopeLegend({ deltaEff }: { deltaEff: number }) {
 
   return (
     <div className="legend">
-      <h3>Steigungsmenge S ({slopes.length + 1} Steigungen)</h3>
+      <h3>{t('legend_title', { n: slopes.length + 1 })}</h3>
       <svg viewBox={`0 0 ${size} ${size}`}>
         {slopes.map((s) => {
           const a = ray(1, -s), b = ray(-1, s);

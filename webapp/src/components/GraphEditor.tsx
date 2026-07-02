@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { InputIssues } from '../algorithm/embedding';
 import type { InputGraph, Point } from '../algorithm/types';
+import { useI18n } from '../i18n';
 import { svgPoint } from './svgUtils';
 
 type Mode = 'node' | 'edge' | 'move' | 'delete';
@@ -16,6 +17,7 @@ interface Props {
 const VIEW = 640;
 
 export function GraphEditor({ graph, issues, onChange, selectedNode = null }: Props) {
+  const { t } = useI18n();
   const svgRef = useRef<SVGSVGElement>(null);
   const [mode, setMode] = useState<Mode>('node');
   const [dragNode, setDragNode] = useState<number | null>(null);
@@ -154,18 +156,22 @@ export function GraphEditor({ graph, issues, onChange, selectedNode = null }: Pr
       <div className="editor-toolbar">
         {(
           [
-            ['node', 'Knoten'],
-            ['edge', 'Kanten'],
-            ['move', 'Verschieben'],
-            ['delete', 'Löschen'],
+            ['node', t('editor_node')],
+            ['edge', t('editor_edge')],
+            ['move', t('editor_move')],
+            ['delete', t('editor_delete')],
           ] as Array<[Mode, string]>
         ).map(([m, label]) => (
           <button key={m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>
             {label}
           </button>
         ))}
-        <div className="spacer" />
-        <button onClick={() => onChange({ n: 0, edges: [], pos: [] })}>Leeren</button>
+        <button
+          className="push-right"
+          onClick={() => onChange({ n: 0, edges: [], pos: [] })}
+        >
+          {t('editor_clear')}
+        </button>
       </div>
       <svg
         ref={svgRef}
