@@ -57,11 +57,27 @@ target_link_libraries(biedl_kant PRIVATE LEDA)
 # ==========================================
 
 # Interaktive GraphWin-App
-add_executable(biedl_kant_slopes biedl_kant_slopes.cpp slopes_core.cpp)
+add_executable(biedl_kant_slopes biedl_kant_slopes.cpp slopes_core.cpp planar_aug.cpp)
 target_include_directories(biedl_kant_slopes PRIVATE "${LEDA_ROOT_DIR}/incl")
 target_link_libraries(biedl_kant_slopes PRIVATE LEDA)
 
 # Headless-Stresstest (Algorithmus + geometrischer Verifier)
-add_executable(slopes_test slopes_test.cpp slopes_core.cpp)
+add_executable(slopes_test slopes_test.cpp slopes_core.cpp planar_aug.cpp)
 target_include_directories(slopes_test PRIVATE "${LEDA_ROOT_DIR}/incl")
 target_link_libraries(slopes_test PRIVATE LEDA)
+
+# ==========================================
+# 1-Bend-Variante (Bekos et al., Theorem 1 + Korollar 2)
+# ==========================================
+
+# Headless-Stresstest
+add_executable(onebend_test onebend_test.cpp onebend_core.cpp
+               canonical_order.cpp planar_aug.cpp)
+target_include_directories(onebend_test PRIVATE "${LEDA_ROOT_DIR}/incl")
+target_link_libraries(onebend_test PRIVATE LEDA)
+
+# Interaktive GraphWin-App
+add_executable(onebend_slopes onebend_slopes.cpp onebend_core.cpp
+               canonical_order.cpp planar_aug.cpp)
+target_include_directories(onebend_slopes PRIVATE "${LEDA_ROOT_DIR}/incl")
+target_link_libraries(onebend_slopes PRIVATE LEDA)

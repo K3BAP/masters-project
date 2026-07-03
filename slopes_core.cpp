@@ -15,6 +15,7 @@
 // =====================================================================
 
 #include "slopes_core.h"
+#include "planar_aug.h"
 
 #include <LEDA/graph/graph_alg.h>
 #include <LEDA/graph/graph_misc.h>
@@ -80,83 +81,8 @@ void shift_right(int target_x, graph& G,
         if (x_edge[e] != UNASSIGNED && x_edge[e] >= target_x) x_edge[e]++;
 }
 
-// ---------------------------------------------------------------------
-// Gradbeschraenkte Augmentierung (Ersatz fuer LEDAs Make_Connected /
-// Make_Biconnected, die den Maximalgrad stark aufblaehen koennen).
-// Korollar 5 setzt eine Augmentierung im Stil von Kant-Bodlaender
-// voraus, bei der der Maximalgrad um hoechstens 2 waechst.
-// ---------------------------------------------------------------------
-edge add_undirected(graph& G, node a, node b, list<edge>& fwd, list<edge>& rev) {
-    edge e = G.new_edge(a, b);
-    edge r = G.new_edge(b, a);
-    G.set_reversal(e, r);
-    G.set_reversal(r, e);
-    fwd.append(e);
-    rev.append(r);
-    return e;
-}
-
-// Komponenten zu einer Kette verbinden; pro Komponente werden Ein- und
-// Ausstiegsknoten mit minimalem Grad gewaehlt (verschieden, wenn moeglich).
-void augment_connected_bounded(graph& G, list<edge>& fwd, list<edge>& rev) {
-    node_array<int> comp(G);
-    int nc = COMPONENTS(G, comp);
-    if (nc <= 1) return;
-    std::vector<node> entry(nc, (node)nil), exit_(nc, (node)nil);
-    node v;
-    forall_nodes(v, G) {
-        int ci = comp[v];
-        if (entry[ci] == nil || G.outdeg(v) < G.outdeg(entry[ci])) {
-            exit_[ci] = entry[ci];
-            entry[ci] = v;
-        } else if (exit_[ci] == nil || G.outdeg(v) < G.outdeg(exit_[ci])) {
-            exit_[ci] = v;
-        }
-    }
-    for (int i = 0; i < nc; i++)
-        if (exit_[i] == nil) exit_[i] = entry[i];   // einelementige Komponente
-    for (int i = 0; i + 1 < nc; i++)
-        add_undirected(G, exit_[i], entry[i + 1], fwd, rev);
-}
-
-// Blockgrenzen an Schnittknoten ueberbruecken: sind zwei in der Rotation
-// eines Knotens c benachbarte Kanten (c,u),(c,w) in verschiedenen
-// Bloecken, dann liegen u,c,w an einer gemeinsamen Flaeche und die Kante
-// (u,w) ist planar einfuegbar; sie verschmilzt die beiden Bloecke.
-// Pro Runde wird die Luecke mit minimalem max(deg(u),deg(w)) gewaehlt,
-// um den Maximalgrad zu schonen.
-bool augment_biconnected_bounded(graph& G, list<edge>& fwd, list<edge>& rev,
-                                 std::string& error) {
-    if (G.number_of_nodes() < 3) return true;
-    int rounds = 0;
-    const int max_rounds = G.number_of_nodes() + G.number_of_edges() + 8;
-    while (!Is_Biconnected(G)) {
-        if (++rounds > max_rounds) { error = "Biconnect-Augmentierung konvergiert nicht."; return false; }
-        if (!PLANAR(G, true)) { error = "Graph waehrend Augmentierung nicht planar (intern)."; return false; }
-        edge_array<int> bcomp(G);
-        BICONNECTED_COMPONENTS(G, bcomp);
-        node c, best_u = nil, best_w = nil;
-        int best_deg = INT_MAX;
-        forall_nodes(c, G) {
-            std::vector<edge> rot;
-            edge e;
-            forall_adj_edges(e, c) rot.push_back(e);
-            int d = (int)rot.size();
-            if (d < 2) continue;
-            for (int j = 0; j < d; j++) {
-                edge e1 = rot[j], e2 = rot[(j + 1) % d];
-                if (bcomp[e1] == bcomp[e2]) continue;
-                node u = G.opposite(c, e1), w = G.opposite(c, e2);
-                if (u == w) continue;
-                int deg_max = std::max(G.outdeg(u), G.outdeg(w));
-                if (deg_max < best_deg) { best_deg = deg_max; best_u = u; best_w = w; }
-            }
-        }
-        if (best_u == nil) { error = "Keine Blockgrenze gefunden (intern)."; return false; }
-        add_undirected(G, best_u, best_w, fwd, rev);
-    }
-    return true;
-}
+// Gradbeschraenkte Augmentierung: siehe planar_aug.{h,cpp} (Flaechen-Chorden,
+// gemeinsam mit dem 1-Bend-Algorithmus aus Theorem 1 genutzt).
 
 struct Ctx {
     graph* G;

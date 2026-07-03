@@ -110,6 +110,22 @@ static void build_star(graph& G, int k) {
     for (int i = 0; i < k; i++) G.new_edge(hub, G.new_node());
 }
 
+// Spinnen-Baum: Zentrum mit `legs` Beinen der Laenge `len`. Haertetest
+// fuer die Augmentierung: Bypass-Chorden wuerden hier den Grad der
+// beinnahen Knoten aufblaehen, Flaechen-Chorden nicht.
+static void build_spider(graph& G, int legs, int len) {
+    G.clear();
+    node c = G.new_node();
+    for (int i = 0; i < legs; i++) {
+        node prev = c;
+        for (int j = 0; j < len; j++) {
+            node w = G.new_node();
+            G.new_edge(prev, w);
+            prev = w;
+        }
+    }
+}
+
 static void build_k4(graph& G) {
     G.clear();
     node v[4];
@@ -170,6 +186,12 @@ int main(int argc, char** argv) {
         snprintf(name, sizeof name, "Stern k=%d", k);
         run_case(G, name);
     }
+    for (int legs = 3; legs <= 10; legs++)
+        for (int len = 2; len <= 3; len++) {
+            build_spider(G, legs, len);
+            snprintf(name, sizeof name, "Spinne legs=%d len=%d", legs, len);
+            run_case(G, name);
+        }
     for (int k = 4; k <= 16; k += 2) {
         build_wheel(G, k, 1);
         snprintf(name, sizeof name, "Rad k=%d", k);
