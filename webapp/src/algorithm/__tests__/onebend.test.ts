@@ -1,0 +1,265 @@
+// Property-Suite fuer den 1-Bend-Algorithmus (Theorem 1 + Korollar 2):
+// das Browser-Pendant zu onebend_test (C++). Jede Instanz muss den
+// geometrischen 1-Bend-Verifier bestehen; kanonische Ordnungen werden
+// zusaetzlich vom unabhaengigen Checker validiert.
+
+import { describe, expect, it } from 'vitest';
+import { EXAMPLES } from '../../examples';
+import { randomPlanarGraph } from '../../random';
+import { augmentBiconnected } from '../augment';
+import { buildEmbedding, isPlanarRotation, validateInput } from '../embedding';
+import { planarEmbedding } from '../planarity';
+import type { EmbeddedGraph, InputGraph } from '../types';
+import { augmentTriconnected, isTriconnected } from '../onebend/augmentTriconnected';
+import { checkCanonicalOrder, computeCanonicalOrder } from '../onebend/canonicalOrder';
+import { computeOneBendDrawing } from '../onebend/pipeline';
+
+// ---------------------------------------------------------------------
+// Hilfen: Graphen aus Kantenlisten (Kreispositionen; bei Kreuzungen
+// greift automatisch die Demoucron-Planarisierung der Pipeline)
+// ---------------------------------------------------------------------
+function onCircle(n: number, edges: Array<[number, number]>): InputGraph {
+  const pos = Array.from({ length: n }, (_, i) => ({
+    x: 320 + 260 * Math.cos((2 * Math.PI * i) / n),
+    y: 320 + 260 * Math.sin((2 * Math.PI * i) / n),
+  }));
+  return { n, edges, pos };
+}
+
+function k4(): InputGraph {
+  return onCircle(4, [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]);
+}
+
+function octahedron(): InputGraph {
+  const edges: Array<[number, number]> = [];
+  for (let i = 0; i < 6; i++)
+    for (let j = i + 1; j < 6; j++) {
+      if (Math.floor(i / 2) === Math.floor(j / 2)) continue;
+      edges.push([i, j]);
+    }
+  return onCircle(6, edges);
+}
+
+/** Ikosaeder: 5-regulaer, erzwingt den Sonderfall deg(vn) = Delta. */
+function icosahedron(): InputGraph {
+  const edges: Array<[number, number]> = [];
+  const top = 0, bot = 1;
+  const u = (i: number) => 2 + i;
+  const l = (i: number) => 7 + i;
+  for (let i = 0; i < 5; i++) {
+    edges.push([top, u(i)], [bot, l(i)]);
+    edges.push([u(i), u((i + 1) % 5)], [l(i), l((i + 1) % 5)]);
+    edges.push([u(i), l(i)], [l(i), u((i + 1) % 5)]);
+  }
+  return onCircle(12, edges);
+}
+
+function prism(k: number, anti: boolean): InputGraph {
+  const edges: Array<[number, number]> = [];
+  for (let i = 0; i < k; i++) {
+    edges.push([i, (i + 1) % k]);
+    edges.push([k + i, k + ((i + 1) % k)]);
+    edges.push([i, k + i]);
+    if (anti) edges.push([k + i, (i + 1) % k]);
+  }
+  return onCircle(2 * k, edges);
+}
+
+function wheel(k: number): InputGraph {
+  const edges: Array<[number, number]> = [];
+  for (let i = 0; i < k; i++) edges.push([i, (i + 1) % k], [k, i]);
+  return onCircle(k + 1, edges);
+}
+
+function star(k: number): InputGraph {
+  return onCircle(k + 1, Array.from({ length: k }, (_, i) => [0, i + 1] as [number, number]));
+}
+
+function spider(legs: number, len: number): InputGraph {
+  const edges: Array<[number, number]> = [];
+  let next = 1;
+  for (let i = 0; i < legs; i++) {
+    let prev = 0;
+    for (let j = 0; j < len; j++) { edges.push([prev, next]); prev = next; next++; }
+  }
+  return onCircle(next, edges);
+}
+
+function grid(w: number, h: number): InputGraph {
+  const edges: Array<[number, number]> = [];
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      if (x + 1 < w) edges.push([y * w + x, y * w + x + 1]);
+      if (y + 1 < h) edges.push([y * w + x, (y + 1) * w + x]);
+    }
+  return onCircle(w * h, edges);
+}
+
+function path(k: number): InputGraph {
+  return onCircle(k, Array.from({ length: k - 1 }, (_, i) => [i, i + 1] as [number, number]));
+}
+
+function expectPass(g: InputGraph, label: string) {
+  const res = computeOneBendDrawing(g);
+  expect(res.ok, `${label}: ${res.error ?? ''}`).toBe(true);
+  expect(res.verified, `${label}:\n${res.report ?? ''}`).toBe(true);
+  return res;
+}
+
+/** Triconnected-augmentierte Einbettung eines Eingabegraphen. */
+function triconnectedEmbedding(g: InputGraph): EmbeddedGraph {
+  const eg = validateInput(g).ok ? buildEmbedding(g) : planarEmbedding(g.n, g.edges)!;
+  expect(eg).toBeTruthy();
+  expect(augmentBiconnected(eg)).toBeGreaterThanOrEqual(0);
+  expect(augmentTriconnected(eg)).toBeGreaterThanOrEqual(0);
+  return eg;
+}
+
+// ---------------------------------------------------------------------
+describe('Feste Familien (Theorem 1)', () => {
+  it('K4', () => { expectPass(k4(), 'K4'); });
+  it('Oktaeder', () => { expectPass(octahedron(), 'Oktaeder'); });
+
+  it('Ikosaeder (Sonderfall deg(vn) = Delta)', () => {
+    const res = expectPass(icosahedron(), 'Ikosaeder');
+    expect(res.stats.specialVn).toBe(true);
+    expect(res.stats.augmented).toBe(false);
+    expect(res.stats.deltaEff).toBe(5);
+    expect(res.stats.slopesUsed).toBeLessThanOrEqual(3 * 5 - 8);
+  });
+
+  for (let k = 3; k <= 7; k++) {
+    it(`Prisma k=${k}`, () => { expectPass(prism(k, false), `Prisma ${k}`); });
+    it(`Antiprisma k=${k}`, () => { expectPass(prism(k, true), `Antiprisma ${k}`); });
+    it(`Rad k=${k + 2}`, () => { expectPass(wheel(k + 2), `Rad ${k + 2}`); });
+  }
+});
+
+describe('Korollar-2-Pfad (nicht 3-zusammenhaengende Eingaben)', () => {
+  it('Pfade', () => {
+    expectPass(path(2), 'Pfad 2');
+    expectPass(path(3), 'Pfad 3');
+    expectPass(path(10), 'Pfad 10');
+  });
+  for (const k of [3, 5, 8, 12]) {
+    it(`Stern k=${k}`, () => {
+      const res = expectPass(star(k), `Stern ${k}`);
+      expect(res.stats.augmented).toBe(true);
+      expect(res.stats.slopesUsed).toBeLessThanOrEqual(Math.ceil((9 * k) / 2) + 1);
+    });
+  }
+  for (const [legs, len] of [[3, 2], [5, 2], [8, 2], [5, 3]] as Array<[number, number]>) {
+    it(`Spinne ${legs}x${len}`, () => { expectPass(spider(legs, len), `Spinne ${legs}x${len}`); });
+  }
+  it('Gitter', () => {
+    expectPass(grid(4, 4), 'Gitter 4x4');
+    expectPass(grid(6, 3), 'Gitter 6x3');
+  });
+});
+
+describe('Beispielgraphen der Galerie', () => {
+  for (const ex of EXAMPLES) {
+    it(`${ex.id} besteht die 1-Bend-Verifikation`, () => {
+      expectPass(ex.graph, ex.id);
+    });
+  }
+});
+
+describe('Zufallsgraphen (Delaunay)', () => {
+  const sizes = [5, 8, 12, 20, 32, 48];
+  const densities = [0, 0.5, 1];
+  for (const n of sizes) {
+    for (const d of densities) {
+      for (let s = 1; s <= 2; s++) {
+        const seed = n * 1000 + Math.round(d * 100) * 10 + s;
+        it(`n=${n} density=${d} seed=${seed}`, () => {
+          expectPass(randomPlanarGraph(n, d, seed), `random n=${n} d=${d} s=${seed}`);
+        });
+      }
+    }
+  }
+});
+
+describe('Trikonnektivierungs-Augmentierung', () => {
+  it('macht Graphen 3-zusammenhaengend, bleibt planar', () => {
+    for (let s = 1; s <= 25; s++) {
+      const g = randomPlanarGraph(5 + (s % 20), (s % 4) * 0.3, 7000 + s);
+      const eg = triconnectedEmbedding(g);
+      expect(isTriconnected(eg), `Seed ${7000 + s}: 3-zusammenhaengend`).toBe(true);
+      expect(isPlanarRotation(eg), `Seed ${7000 + s}: planar (Euler)`).toBe(true);
+    }
+  });
+
+  it('laesst 3-zusammenhaengende Graphen unveraendert', () => {
+    const eg = triconnectedEmbedding(icosahedron());
+    expect(eg.edges.every((e) => !e.aug)).toBe(true);
+  });
+});
+
+describe('Kanonische Ordnung', () => {
+  it('besteht den Checker auf Zufallsgraphen; vn hat Minimalgrad', () => {
+    for (let s = 1; s <= 25; s++) {
+      const g = randomPlanarGraph(4 + (s % 24), ((s * 3) % 4) * 0.33, 8000 + s);
+      const eg = triconnectedEmbedding(g);
+      const co = computeCanonicalOrder(eg);
+      expect(co.order, `Seed ${8000 + s}: ${co.error ?? ''}`).toBeTruthy();
+      expect(checkCanonicalOrder(eg, co.order!), `Seed ${8000 + s}`).toBeNull();
+      const deg = eg.rot.map((r) => r.length);
+      expect(deg[co.order!.vn]).toBe(Math.min(...deg));
+    }
+  });
+
+  it('lehnt manipulierte Ordnungen ab (Checker-Selbsttest)', () => {
+    const eg = triconnectedEmbedding(octahedron());
+    const co = computeCanonicalOrder(eg);
+    expect(co.order).toBeTruthy();
+    const order = co.order!;
+    // Zwei mittlere Teile vertauschen muss (mindestens) eine Bedingung brechen
+    if (order.parts.length >= 4) {
+      const parts = order.parts.map((p) => p.slice());
+      [parts[1], parts[2]] = [parts[2], parts[1]];
+      expect(checkCanonicalOrder(eg, { ...order, parts })).not.toBeNull();
+    }
+    // vn austauschen bricht P_m = {vn}
+    expect(checkCanonicalOrder(eg, { ...order, vn: order.v1 })).not.toBeNull();
+  });
+});
+
+describe('Snapshots (Stepper-Grundlage)', () => {
+  it('liefert monoton wachsende, konsistente Zwischenstaende', () => {
+    const res = expectPass(prism(5, true), 'Antiprisma 5');
+    expect(res.snapshots.length).toBeGreaterThanOrEqual(3);
+    expect(res.snapshots[0].kind).toBe('base');
+    expect(res.snapshots[res.snapshots.length - 1].kind).toBe('closing');
+    let prevPlaced = 0;
+    let prevDrawn = 0;
+    for (const s of res.snapshots) {
+      const placed = s.pos.filter((p) => p !== null).length;
+      const drawn = s.polylines.filter((p) => p !== null).length;
+      expect(placed).toBeGreaterThanOrEqual(prevPlaced);
+      expect(drawn).toBeGreaterThanOrEqual(prevDrawn);
+      prevPlaced = placed;
+      prevDrawn = drawn;
+      for (const v of s.newNodes) expect(s.pos[v]).not.toBeNull();
+      for (const e of s.newEdges) expect(s.polylines[e]).not.toBeNull();
+    }
+    const last = res.snapshots[res.snapshots.length - 1];
+    expect(last.pos.every((p) => p !== null)).toBe(true);
+    expect(last.polylines.every((p) => p !== null)).toBe(true);
+  });
+
+  it('Ikosaeder enthaelt einen special-Schritt', () => {
+    const res = expectPass(icosahedron(), 'Ikosaeder');
+    expect(res.snapshots.some((s) => s.kind === 'special')).toBe(true);
+  });
+});
+
+describe('Nicht-planare Eingaben', () => {
+  it('K5 wird abgelehnt', () => {
+    const edges: Array<[number, number]> = [];
+    for (let i = 0; i < 5; i++) for (let j = i + 1; j < 5; j++) edges.push([i, j]);
+    const res = computeOneBendDrawing(onCircle(5, edges));
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/planar/);
+  });
+});
