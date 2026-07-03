@@ -1,18 +1,28 @@
-# Webapp: Planare Zeichnungen mit ⌈Δ/2⌉ Steigungen
+# Webapp: Planare Zeichnungen mit wenigen Steigungen
 
-Interaktive SPA-Demonstration des Algorithmus aus **Theorem 4 + Korollar 5** von
+Interaktive SPA-Demonstration zweier Algorithmen aus
 Bekos, Katsanou, Kindermann, Pavlidi: *„How Many Slopes Does Polynomial Area Cost?"*
-(arXiv:2605.31098) — 2-Bend-planare Gitterzeichnungen mit höchstens ⌈Δ/2⌉ Steigungen
-(⌈Δ/2⌉+1 bei Bikonnektivitäts-Augmentierung) auf einem O(n) × O(Δn²)-Gitter.
+(arXiv:2605.31098), umschaltbar in der Kopfzeile:
 
-Die Referenzimplementierung in C++/LEDA liegt im Repository-Wurzelverzeichnis
-(`slopes_core.cpp`, Details in `IMPLEMENTIERUNGSBERICHT_SLOPES.md`). Da LEDA
-proprietär ist, enthält die Webapp einen eigenständigen **TypeScript-Port** des
-Algorithmus (`src/algorithm/`), der dieselben Invarianten mit einem geometrischen
-Verifier (BigInt-Arithmetik) nachprüft.
+- **Theorem 4 + Korollar 5** — 2-Bend-planare Gitterzeichnungen mit höchstens
+  ⌈Δ/2⌉ Steigungen (⌈Δ/2⌉+1 bei Bikonnektivitäts-Augmentierung) auf einem
+  O(n) × O(Δn²)-Gitter (st-Nummerierung, Ports, Spaltenrouting).
+- **Theorem 1 + Korollar 2** — 1-Bend-planare Gitterzeichnungen mit höchstens
+  3Δ−8 Steigungen (⌈9Δ/2⌉+1 bei 3-Zusammenhangs-Augmentierung) auf einem
+  O(Δn²) × O(Δn³)-Gitter (kanonische Ordnung, Schnyder-artige 4-Kantenfärbung,
+  Cut-basierte horizontale Streckung).
+
+Die Referenzimplementierungen in C++/LEDA liegen im Repository-Wurzelverzeichnis
+(`slopes_core.cpp` bzw. `onebend_core.cpp`, `canonical_order.cpp`, `planar_aug.cpp`;
+Details in `IMPLEMENTIERUNGSBERICHT_SLOPES.md`). Da LEDA proprietär ist, enthält
+die Webapp eigenständige **TypeScript-Ports** (`src/algorithm/`,
+`src/algorithm/onebend/`), die dieselben Invarianten mit geometrischen Verifiern
+(BigInt-Arithmetik) nachprüfen.
 
 ## Funktionen
 
+- **Algorithmus-Umschalter**: „2 Knicke · ⌈Δ/2⌉" (Theorem 4) oder
+  „1 Knick · 3Δ−8" (Theorem 1) in der Kopfzeile.
 - **Grapheditor**: Knoten setzen, Kanten ziehen, verschieben, löschen — mit
   kontextabhängigen Cursorn und Hover-Feedback. Kreuzungsfreie Zeichnungen behalten
   ihre gezeichnete Einbettung (Rotationssystem aus der Geometrie). Zeichnungen mit
@@ -20,16 +30,22 @@ Verifier (BigInt-Arithmetik) nachprüft.
   **Demoucron-Malgrange-Pertuiset** berechnet automatisch eine planare Einbettung
   (das Pendant zu LEDAs `PLANAR(G, true)`); nicht-planare Graphen (K₅, K₃,₃, …)
   werden mit Meldung abgelehnt.
-- **Beispiele + Zufallsgenerator**: Oktaeder (die 3-Steigungen-Ausnahme), Räder,
-  Stern, Gitter; zufällige planare Graphen über Delaunay-Triangulierung mit
-  Dichteregler.
-- **Schrittansicht**: inkrementeller Aufbau entlang der st-Nummerierung mit
-  Pending-Kanten-Stummeln, Median-Hervorhebung und Erklärungstexten.
-- **Ergebnisansicht**: Segmentfärbung nach Steigung, Steigungsmengen-Legende,
+- **Beispiele + Zufallsgenerator**: Oktaeder (Theorem-4-Ausnahme), Ikosaeder
+  (Theorem-1-Sonderfall deg(vₙ)=Δ), Antiprisma, Räder, Stern, Gitter; zufällige
+  planare Graphen über Delaunay-Triangulierung mit Dichteregler.
+- **Schrittansicht**: Theorem 4 inkrementell entlang der st-Nummerierung
+  (Pending-Kanten-Stummel, Median-Hervorhebung); Theorem 1 über vollständige
+  **Snapshots** pro Konstruktionsschritt — die Cut-Streckungen verschieben auch
+  bereits platzierte Teile, sodass sich Zwischenstände nicht aus dem Endbild
+  ableiten lassen.
+- **Ergebnisansicht**: Segmentfärbung nach Steigung, Steigungsmengen-Legende
+  (Theorem 1: rationale Steigungen ±k/j und j/(Δ−3), steile schematisch gespreizt),
   Pan/Zoom, Umschalter kompakt (y anisotrop gestaucht — Parallelität bleibt
   erhalten) / maßstabsgetreu; Hilfskanten der Augmentierung einblendbar.
-- **Verifikation**: nach jedem Lauf werden Planarität, ≤ 2 Knicke, die strikte
-  Steigungsschranke und die Flächenschranken exakt nachgemessen (PASS/FAIL).
+- **Verifikation**: nach jedem Lauf werden Planarität, Knickzahl (≤ 2 bzw. ≤ 1),
+  die exakte Steigungsmengen-Zugehörigkeit (Theorem 1: rationale Tests, Kantenform
+  je Farbe, Knoten-y ≡ 0 mod k) und die Flächenschranken exakt nachgemessen
+  (PASS/FAIL).
 - **Mehrsprachig**: Deutsch, Englisch und Griechisch; Umschalter in der Kopfzeile
   (leichtgewichtiges eigenes i18n-Modul in `src/i18n.tsx`, Wahl wird gespeichert).
 
@@ -38,7 +54,7 @@ Verifier (BigInt-Arithmetik) nachprüft.
 ```bash
 npm install
 npm run dev        # Entwicklungsserver
-npm test           # Vitest-Property-Suite (Beispiele + Delaunay-Zufallsgraphen)
+npm test           # Vitest-Property-Suite (beide Algorithmen)
 npm run build      # Produktions-Build nach dist/
 ```
 
@@ -47,9 +63,10 @@ npm run build      # Produktions-Build nach dist/
 - Einbettung aus der Zeichnungsgeometrie (kreuzungsfreie Zeichnungen) bzw.
   Demoucron-Planarisierung (O(n²)) statt LEDA `PLANAR`.
 - st-Nummerierung über offene Ohren-Dekomposition (statt LEDA `ST_NUMBERING`).
-- Bikonnektivitäts-Augmentierung über **Flächen-Chorden** (Verallgemeinerung der
-  Bypass-Kanten aus der C++-Version; vermeidet Gradanhäufung z. B. bei
-  Spinnen-Bäumen und hält den Maximalgradzuwachs ≤ 2).
+- Bikonnektivitäts- und Trikonnektivitäts-Augmentierung über **Flächen-Chorden**
+  (gradschonend; Separationspaare per Brute-Force statt LEDA `Is_Triconnected`).
+- Kanonische Ordnung, 4-Kantenfärbung, Cut-Streckung und 1-Bend-Verifier sind
+  direkte Ports von `canonical_order.cpp` / `onebend_core.cpp`.
 
-Alle drei Punkte sind durch die Property-Tests (`src/algorithm/__tests__/`) gegen
+Alle Punkte sind durch die Property-Tests (`src/algorithm/__tests__/`) gegen
 die Papier-Spezifikationen abgesichert.

@@ -17,6 +17,12 @@ export const LANGS: Array<{ id: Lang; label: string }> = [
 const de = {
   app_title: 'Planare Zeichnungen mit ⌈Δ/2⌉ Steigungen',
   app_subtitle: 'Bekos, Katsanou, Kindermann, Pavlidi – Theorem 4 (2 Knicke, polynomielle Fläche)',
+  app_title_onebend: 'Planare Zeichnungen mit 3Δ−8 Steigungen',
+  app_subtitle_onebend: 'Bekos, Katsanou, Kindermann, Pavlidi – Theorem 1 (1 Knick, polynomielle Fläche)',
+  algo_twobend: '2 Knicke · ⌈Δ/2⌉',
+  algo_onebend: '1 Knick · 3Δ−8',
+  algo_twobend_hint: 'Theorem 4: 2 Knicke pro Kante, ⌈Δ/2⌉ Steigungen, st-Nummerierung',
+  algo_onebend_hint: 'Theorem 1: 1 Knick pro Kante, 3Δ−8 Steigungen, kanonische Ordnung',
   app_run: 'Zeichnung berechnen',
   status_ready: 'Bereit.',
   status_min_nodes: 'Mindestens zwei Knoten zeichnen.',
@@ -31,6 +37,12 @@ const de = {
     'Kante und höchstens ⌈Δ/2⌉ Steigungen (⌈Δ/2⌉+1 bei nötiger Bikonnektivitäts-' +
     'Augmentierung) auf einem O(n) × O(Δn²)-Gitter. Die Schrittansicht zeigt den ' +
     'inkrementellen Aufbau entlang der st-Nummerierung.',
+  placeholder_2_onebend:
+    'Der Algorithmus erzeugt eine planare Gitterzeichnung mit höchstens einem Knick pro ' +
+    'Kante und höchstens 3Δ−8 Steigungen (⌈9Δ/2⌉+1 bei nötiger 3-Zusammenhangs-' +
+    'Augmentierung, Korollar 2) auf einem O(Δn²) × O(Δn³)-Gitter. Die Schrittansicht ' +
+    'zeigt den inkrementellen Aufbau entlang der kanonischen Ordnung; Streckungen ' +
+    'verschieben dabei auch bereits platzierte Teile.',
 
   editor_node: 'Knoten',
   editor_edge: 'Kanten',
@@ -55,6 +67,10 @@ const de = {
   example_grid44_desc: 'Bikonnektiert, Δ=4 → orthogonal (2 Steigungen)',
   example_path6_name: 'Pfad P₆',
   example_path6_desc: 'Minimalbeispiel mit Augmentierung',
+  example_icosahedron_name: 'Ikosaeder',
+  example_icosahedron_desc: '5-regulär, 3-zusammenhängend; Theorem-1-Sonderfall deg(vₙ)=Δ',
+  example_antiprism6_name: 'Antiprisma A₆',
+  example_antiprism6_desc: '4-regulär, 3-zusammenhängend; Theorem 1 ohne Augmentierung',
 
   view_compact: 'kompakt (y gestaucht)',
   view_aug: 'Hilfskanten',
@@ -85,11 +101,40 @@ const de = {
     ' Die gestrichelten Hilfskanten der Augmentierung gehören nicht zum Endergebnis ' +
     '(Schalter „Hilfskanten“ blendet sie aus).',
 
+  ob_step_base:
+    'Basis: v{v1}, die Kette P₁ ({size} Knoten) und v{v2} liegen auf Zeile 0; alle Kanten ' +
+    'von G₁ sind horizontale Segmente (schwarz). Die Kante (v{v1},v{v2}) wird erst zum ' +
+    'Schluss unterhalb der Zeichnung eingesetzt.',
+  ob_step_chain:
+    'P{i}: Kette mit {size} Knoten auf einer neuen Zeile (y wächst um k). Die blaue Kante ' +
+    'knickt am linken Nachbarn v_ℓ (Port aus S_rs∪S_v), die grüne am rechten Nachbarn v_r ' +
+    '(S_ls∪S_v); Ketteninneres horizontal. Cut-Streckungen schaffen vorher Platz.',
+  ob_step_singleton:
+    'P{i}: Singleton mit {q}+2 unteren Nachbarn. Der Knoten steht vertikal über dem letzten ' +
+    'inneren Nachbarn; die übrigen roten Kanten steigen vertikal und knicken in flache ' +
+    'Steigungen j/{d3}. Streckungen machen die Horizontalabstände zu Vielfachen von {d3}.',
+  ob_step_special:
+    'Sonderfall deg(vₙ)=Δ: die aufgeschobene Kante (w_Δ, v{vn}) wird jetzt eingesetzt – ' +
+    'vertikal an w_Δ und mit flachem Segment über der Zeichnung nach vₙ.',
+  ob_step_closing:
+    'Abschluss: die Kante (v{v1},v{v2}) wird unterhalb der Zeichnung eingesetzt – vertikal ' +
+    'an v{v1} und mit Steigung 1/{d3} nach v{v2}.',
+  ob_step_finished:
+    'Fertig – die Zeichnung ist vollständig: {n} Knoten auf einem {w} × {h}-Gitter mit ' +
+    '{s} Steigungen und höchstens einem Knick pro Kante.',
+
   stats_pass: 'VERIFIKATION: PASS',
   stats_fail: 'VERIFIKATION: FAIL',
   stats_nodes_edges: 'Knoten / Kanten',
   stats_incl_aug: ' (inkl. Hilfskanten)',
   stats_maxdeg: 'Maxgrad Δ / Δ_eff',
+  ob_stats_maxdeg: 'Maxgrad Δ / Δ′ / Δ_eff',
+  ob_stats_k: 'Parameter k = 4Δ_eff·n²',
+  ob_stats_slopes_value: '{used} benutzt, |S| = {allowed}, strikte Schranke {strict}',
+  ob_stats_parts: 'Teile der kanonischen Ordnung',
+  ob_stats_aug_yes: 'ja (3-Zusammenhang, Korollar 2)',
+  ob_stats_special: ' · Sonderfall deg(vₙ)=Δ',
+  ob_legend_title: 'Steigungsmenge S ({n} Steigungen, steile schematisch)',
   stats_slopes: 'Steigungen',
   stats_slopes_value: '{used} benutzt, Schranke ⌈Δ/2⌉{plus} = {bound}',
   stats_grid: 'Gitter (B × H)',
@@ -112,6 +157,12 @@ export type MsgKey = keyof typeof de;
 const en: Record<MsgKey, string> = {
   app_title: 'Planar drawings with ⌈Δ/2⌉ slopes',
   app_subtitle: 'Bekos, Katsanou, Kindermann, Pavlidi – Theorem 4 (2 bends, polynomial area)',
+  app_title_onebend: 'Planar drawings with 3Δ−8 slopes',
+  app_subtitle_onebend: 'Bekos, Katsanou, Kindermann, Pavlidi – Theorem 1 (1 bend, polynomial area)',
+  algo_twobend: '2 bends · ⌈Δ/2⌉',
+  algo_onebend: '1 bend · 3Δ−8',
+  algo_twobend_hint: 'Theorem 4: 2 bends per edge, ⌈Δ/2⌉ slopes, st-numbering',
+  algo_onebend_hint: 'Theorem 1: 1 bend per edge, 3Δ−8 slopes, canonical ordering',
   app_run: 'Compute drawing',
   status_ready: 'Ready.',
   status_min_nodes: 'Draw at least two vertices.',
@@ -126,6 +177,11 @@ const en: Record<MsgKey, string> = {
     'most ⌈Δ/2⌉ slopes (⌈Δ/2⌉+1 if biconnectivity augmentation is required) on an ' +
     'O(n) × O(Δn²) grid. The step view shows the incremental construction along the ' +
     'st-numbering.',
+  placeholder_2_onebend:
+    'The algorithm produces a planar grid drawing with at most one bend per edge and at ' +
+    'most 3Δ−8 slopes (⌈9Δ/2⌉+1 if triconnectivity augmentation is required, Corollary 2) ' +
+    'on an O(Δn²) × O(Δn³) grid. The step view shows the incremental construction along ' +
+    'the canonical ordering; stretching also moves parts that were placed earlier.',
 
   editor_node: 'Vertices',
   editor_edge: 'Edges',
@@ -150,6 +206,10 @@ const en: Record<MsgKey, string> = {
   example_grid44_desc: 'Biconnected, Δ=4 → orthogonal (2 slopes)',
   example_path6_name: 'Path P₆',
   example_path6_desc: 'Minimal example with augmentation',
+  example_icosahedron_name: 'Icosahedron',
+  example_icosahedron_desc: '5-regular, 3-connected; Theorem 1 special case deg(vₙ)=Δ',
+  example_antiprism6_name: 'Antiprism A₆',
+  example_antiprism6_desc: '4-regular, 3-connected; Theorem 1 without augmentation',
 
   view_compact: 'compact (y squeezed)',
   view_aug: 'helper edges',
@@ -180,11 +240,40 @@ const en: Record<MsgKey, string> = {
     ' The dashed helper edges from the augmentation are not part of the final result ' +
     '(the “helper edges” toggle hides them).',
 
+  ob_step_base:
+    'Base: v{v1}, the chain P₁ ({size} vertices) and v{v2} lie on row 0; all edges of G₁ ' +
+    'are horizontal segments (black). The edge (v{v1},v{v2}) is inserted below the drawing ' +
+    'at the very end.',
+  ob_step_chain:
+    'P{i}: chain of {size} vertices on a new row (y grows by k). The blue edge bends at ' +
+    'the left neighbor v_ℓ (port from S_rs∪S_v), the green one at the right neighbor v_r ' +
+    '(S_ls∪S_v); chain interior horizontal. Cut stretching makes room beforehand.',
+  ob_step_singleton:
+    'P{i}: singleton with {q}+2 lower neighbors. The vertex sits vertically above the last ' +
+    'inner neighbor; the remaining red edges rise vertically and bend into flat slopes ' +
+    'j/{d3}. Stretching makes the horizontal distances multiples of {d3}.',
+  ob_step_special:
+    'Special case deg(vₙ)=Δ: the deferred edge (w_Δ, v{vn}) is inserted now – vertical at ' +
+    'w_Δ and with a flat segment above the drawing towards vₙ.',
+  ob_step_closing:
+    'Closing: the edge (v{v1},v{v2}) is inserted below the drawing – vertical at v{v1} ' +
+    'and with slope 1/{d3} towards v{v2}.',
+  ob_step_finished:
+    'Finished – the drawing is complete: {n} vertices on a {w} × {h} grid using {s} slopes ' +
+    'and at most one bend per edge.',
+
   stats_pass: 'VERIFICATION: PASS',
   stats_fail: 'VERIFICATION: FAIL',
   stats_nodes_edges: 'Vertices / edges',
   stats_incl_aug: ' (incl. helper edges)',
   stats_maxdeg: 'Max degree Δ / Δ_eff',
+  ob_stats_maxdeg: 'Max degree Δ / Δ′ / Δ_eff',
+  ob_stats_k: 'Parameter k = 4Δ_eff·n²',
+  ob_stats_slopes_value: '{used} used, |S| = {allowed}, strict bound {strict}',
+  ob_stats_parts: 'Parts of the canonical ordering',
+  ob_stats_aug_yes: 'yes (triconnectivity, Corollary 2)',
+  ob_stats_special: ' · special case deg(vₙ)=Δ',
+  ob_legend_title: 'Slope set S ({n} slopes, steep ones schematic)',
   stats_slopes: 'Slopes',
   stats_slopes_value: '{used} used, bound ⌈Δ/2⌉{plus} = {bound}',
   stats_grid: 'Grid (W × H)',
@@ -205,6 +294,12 @@ const en: Record<MsgKey, string> = {
 const el: Record<MsgKey, string> = {
   app_title: 'Επίπεδα σχέδια με ⌈Δ/2⌉ κλίσεις',
   app_subtitle: 'Bekos, Katsanou, Kindermann, Pavlidi – Θεώρημα 4 (2 κάμψεις, πολυωνυμικό εμβαδόν)',
+  app_title_onebend: 'Επίπεδα σχέδια με 3Δ−8 κλίσεις',
+  app_subtitle_onebend: 'Bekos, Katsanou, Kindermann, Pavlidi – Θεώρημα 1 (1 κάμψη, πολυωνυμικό εμβαδόν)',
+  algo_twobend: '2 κάμψεις · ⌈Δ/2⌉',
+  algo_onebend: '1 κάμψη · 3Δ−8',
+  algo_twobend_hint: 'Θεώρημα 4: 2 κάμψεις ανά ακμή, ⌈Δ/2⌉ κλίσεις, αρίθμηση st',
+  algo_onebend_hint: 'Θεώρημα 1: 1 κάμψη ανά ακμή, 3Δ−8 κλίσεις, κανονική διάταξη',
   app_run: 'Υπολογισμός σχεδίου',
   status_ready: 'Έτοιμο.',
   status_min_nodes: 'Σχεδιάστε τουλάχιστον δύο κόμβους.',
@@ -218,6 +313,11 @@ const el: Record<MsgKey, string> = {
     'Ο αλγόριθμος παράγει ένα επίπεδο σχέδιο πλέγματος με το πολύ δύο κάμψεις ανά ακμή και ' +
     'το πολύ ⌈Δ/2⌉ κλίσεις (⌈Δ/2⌉+1 αν χρειάζεται επαύξηση δισυνεκτικότητας) σε πλέγμα ' +
     'O(n) × O(Δn²). Η προβολή βημάτων δείχνει την αυξητική κατασκευή κατά την αρίθμηση st.',
+  placeholder_2_onebend:
+    'Ο αλγόριθμος παράγει ένα επίπεδο σχέδιο πλέγματος με το πολύ μία κάμψη ανά ακμή και ' +
+    'το πολύ 3Δ−8 κλίσεις (⌈9Δ/2⌉+1 αν χρειάζεται επαύξηση τρισυνεκτικότητας, Πόρισμα 2) ' +
+    'σε πλέγμα O(Δn²) × O(Δn³). Η προβολή βημάτων δείχνει την αυξητική κατασκευή κατά την ' +
+    'κανονική διάταξη· οι εκτάσεις μετακινούν και ήδη τοποθετημένα τμήματα.',
 
   editor_node: 'Κόμβοι',
   editor_edge: 'Ακμές',
@@ -242,6 +342,10 @@ const el: Record<MsgKey, string> = {
   example_grid44_desc: 'Δισυνεκτικό, Δ=4 → ορθογώνιο (2 κλίσεις)',
   example_path6_name: 'Μονοπάτι P₆',
   example_path6_desc: 'Ελάχιστο παράδειγμα με επαύξηση',
+  example_icosahedron_name: 'Εικοσάεδρο',
+  example_icosahedron_desc: '5-κανονικό, 3-συνεκτικό· ειδική περίπτωση του Θεωρήματος 1: deg(vₙ)=Δ',
+  example_antiprism6_name: 'Αντιπρίσμα A₆',
+  example_antiprism6_desc: '4-κανονικό, 3-συνεκτικό· Θεώρημα 1 χωρίς επαύξηση',
 
   view_compact: 'συμπαγές (συμπίεση y)',
   view_aug: 'βοηθητικές ακμές',
@@ -272,11 +376,41 @@ const el: Record<MsgKey, string> = {
     ' Οι διακεκομμένες βοηθητικές ακμές της επαύξησης δεν ανήκουν στο τελικό αποτέλεσμα ' +
     '(ο διακόπτης «βοηθητικές ακμές» τις αποκρύπτει).',
 
+  ob_step_base:
+    'Βάση: ο v{v1}, η αλυσίδα P₁ ({size} κόμβοι) και ο v{v2} βρίσκονται στη γραμμή 0· όλες ' +
+    'οι ακμές του G₁ είναι οριζόντια τμήματα (μαύρα). Η ακμή (v{v1},v{v2}) εισάγεται κάτω ' +
+    'από το σχέδιο στο τέλος.',
+  ob_step_chain:
+    'P{i}: αλυσίδα {size} κόμβων σε νέα γραμμή (το y αυξάνεται κατά k). Η μπλε ακμή κάμπτεται ' +
+    'στον αριστερό γείτονα v_ℓ (θύρα από S_rs∪S_v), η πράσινη στον δεξιό v_r (S_ls∪S_v)· ' +
+    'το εσωτερικό της αλυσίδας οριζόντιο. Οι εκτάσεις (cuts) δημιουργούν πρώτα χώρο.',
+  ob_step_singleton:
+    'P{i}: μεμονωμένος κόμβος με {q}+2 κάτω γείτονες. Ο κόμβος τοποθετείται κατακόρυφα πάνω ' +
+    'από τον τελευταίο εσωτερικό γείτονα· οι υπόλοιπες κόκκινες ακμές ανεβαίνουν κατακόρυφα ' +
+    'και κάμπτονται σε ρηχές κλίσεις j/{d3}. Οι εκτάσεις κάνουν τις οριζόντιες αποστάσεις ' +
+    'πολλαπλάσια του {d3}.',
+  ob_step_special:
+    'Ειδική περίπτωση deg(vₙ)=Δ: η αναβληθείσα ακμή (w_Δ, v{vn}) εισάγεται τώρα – κατακόρυφα ' +
+    'στον w_Δ και με ρηχό τμήμα πάνω από το σχέδιο προς τον vₙ.',
+  ob_step_closing:
+    'Κλείσιμο: η ακμή (v{v1},v{v2}) εισάγεται κάτω από το σχέδιο – κατακόρυφα στον v{v1} ' +
+    'και με κλίση 1/{d3} προς τον v{v2}.',
+  ob_step_finished:
+    'Ολοκληρώθηκε – το σχέδιο είναι πλήρες: {n} κόμβοι σε πλέγμα {w} × {h} με {s} κλίσεις ' +
+    'και το πολύ μία κάμψη ανά ακμή.',
+
   stats_pass: 'ΕΠΑΛΗΘΕΥΣΗ: PASS',
   stats_fail: 'ΕΠΑΛΗΘΕΥΣΗ: FAIL',
   stats_nodes_edges: 'Κόμβοι / ακμές',
   stats_incl_aug: ' (μαζί με βοηθητικές)',
   stats_maxdeg: 'Μέγιστος βαθμός Δ / Δ_eff',
+  ob_stats_maxdeg: 'Μέγιστος βαθμός Δ / Δ′ / Δ_eff',
+  ob_stats_k: 'Παράμετρος k = 4Δ_eff·n²',
+  ob_stats_slopes_value: '{used} σε χρήση, |S| = {allowed}, αυστηρό όριο {strict}',
+  ob_stats_parts: 'Τμήματα της κανονικής διάταξης',
+  ob_stats_aug_yes: 'ναι (τρισυνεκτικότητα, Πόρισμα 2)',
+  ob_stats_special: ' · ειδική περίπτωση deg(vₙ)=Δ',
+  ob_legend_title: 'Σύνολο κλίσεων S ({n} κλίσεις, οι απότομες σχηματικά)',
   stats_slopes: 'Κλίσεις',
   stats_slopes_value: '{used} σε χρήση, όριο ⌈Δ/2⌉{plus} = {bound}',
   stats_grid: 'Πλέγμα (Π × Υ)',

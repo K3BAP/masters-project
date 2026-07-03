@@ -1,23 +1,33 @@
 import { useMemo, useState } from 'react';
 import { validateInput } from './algorithm/embedding';
 import { computeSlopesDrawing } from './algorithm/pipeline';
+import { computeOneBendDrawing } from './algorithm/onebend/pipeline';
+import type { OneBendResult } from './algorithm/onebend/types';
 import type { DrawingResult, InputGraph } from './algorithm/types';
 import { DrawingView } from './components/DrawingView';
 import { Gallery } from './components/Gallery';
 import { GraphEditor } from './components/GraphEditor';
+import { OneBendLegend } from './components/OneBendLegend';
+import { OneBendStatsPanel } from './components/OneBendStatsPanel';
+import { OneBendStepper } from './components/OneBendStepper';
+import { OneBendView } from './components/OneBendView';
 import { SlopeLegend } from './components/SlopeLegend';
 import { StatsPanel } from './components/StatsPanel';
 import { Stepper } from './components/Stepper';
 import { EXAMPLES } from './examples';
 import { LANGS, useI18n } from './i18n';
 
+type Algo = 'twobend' | 'onebend';
+
 export default function App() {
   const { lang, setLang, t, translateError } = useI18n();
+  const [algo, setAlgo] = useState<Algo>('twobend');
   const [graph, setGraph] = useState<InputGraph>(
     () => structuredClone(EXAMPLES.find((e) => e.id === 'wheel8')!.graph),
   );
   const [result, setResult] = useState<DrawingResult | null>(null);
-  const [step, setStep] = useState(0); // 1..n; n+1 = Schritt "Fertig"
+  const [obResult, setObResult] = useState<OneBendResult | null>(null);
+  const [step, setStep] = useState(0);
   const [stale, setStale] = useState(false);
   // In der Ergebnisansicht angeklickter Knoten; wird auch im Editor markiert.
   const [selected, setSelected] = useState<number | null>(null);
@@ -31,10 +41,26 @@ export default function App() {
   const needsAutoEmbedding = canRun && !issues.ok;
 
   const run = () => {
-    const res = computeSlopesDrawing(graph);
-    setResult(res);
-    setStep(res.ok ? res.stats.n + 1 : 0); // n+1 = Schritt "Fertig" (ohne Hervorhebungen)
+    if (algo === 'twobend') {
+      const res = computeSlopesDrawing(graph);
+      setResult(res);
+      setObResult(null);
+      setStep(res.ok ? res.stats.n + 1 : 0); // n+1 = Schritt "Fertig"
+    } else {
+      const res = computeOneBendDrawing(graph);
+      setObResult(res);
+      setResult(null);
+      setStep(res.ok ? res.snapshots.length + 1 : 0); // S+1 = "Fertig"
+    }
     setStale(false);
+    setSelected(null);
+  };
+
+  const switchAlgo = (a: Algo) => {
+    if (a === algo) return;
+    setAlgo(a);
+    setResult(null);
+    setObResult(null);
     setSelected(null);
   };
 
@@ -54,12 +80,33 @@ export default function App() {
           ? t('status_degenerate')
           : t('status_ready');
 
+  const activeError = algo === 'twobend' ? result?.error : obResult?.error;
+  const hasResult = algo === 'twobend' ? result?.ok : obResult?.ok;
+
   return (
     <div className="app">
       <header>
-        <h1>{t('app_title')}</h1>
-        <span className="subtitle">{t('app_subtitle')}</span>
+        <h1>{algo === 'twobend' ? t('app_title') : t('app_title_onebend')}</h1>
+        <span className="subtitle">
+          {algo === 'twobend' ? t('app_subtitle') : t('app_subtitle_onebend')}
+        </span>
         <div className="spacer" />
+        <div className="algo-switch lang-switch">
+          <button
+            className={algo === 'twobend' ? 'active' : ''}
+            title={t('algo_twobend_hint')}
+            onClick={() => switchAlgo('twobend')}
+          >
+            {t('algo_twobend')}
+          </button>
+          <button
+            className={algo === 'onebend' ? 'active' : ''}
+            title={t('algo_onebend_hint')}
+            onClick={() => switchAlgo('onebend')}
+          >
+            {t('algo_onebend')}
+          </button>
+        </div>
         <span className={!canRun ? 'status bad' : needsAutoEmbedding ? 'status warn' : 'status ok'}>
           {statusText}
         </span>
@@ -82,7 +129,7 @@ export default function App() {
 
       <main>
         <section className="left">
-          <Gallery onLoad={(g) => { updateGraph(g); setResult(null); }} />
+          <Gallery onLoad={(g) => { updateGraph(g); setResult(null); setObResult(null); }} />
           <GraphEditor
             graph={graph}
             issues={issues}
@@ -92,10 +139,10 @@ export default function App() {
         </section>
 
         <section className="right">
-          {result && !result.ok && (
-            <div className="error-banner">{translateError(result.error ?? '')}</div>
+          {activeError && (
+            <div className="error-banner">{translateError(activeError)}</div>
           )}
-          {result && result.ok && (
+          {hasResult && algo === 'twobend' && result && (
             <>
               {stale && <div className="stale-banner">{t('banner_stale')}</div>}
               <Stepper result={result} step={step} setStep={setStep} />
@@ -111,10 +158,26 @@ export default function App() {
               </div>
             </>
           )}
-          {!result && (
+          {hasResult && algo === 'onebend' && obResult && (
+            <>
+              {stale && <div className="stale-banner">{t('banner_stale')}</div>}
+              <OneBendStepper result={obResult} step={step} setStep={setStep} />
+              <OneBendView
+                result={obResult}
+                step={step}
+                selected={selected}
+                onSelect={setSelected}
+              />
+              <div className="row">
+                <OneBendStatsPanel result={obResult} />
+                <OneBendLegend deltaEff={obResult.stats.deltaEff} k={obResult.stats.k} />
+              </div>
+            </>
+          )}
+          {!activeError && !hasResult && (
             <div className="placeholder">
               <p>{t('placeholder_1', { run: t('app_run') })}</p>
-              <p>{t('placeholder_2')}</p>
+              <p>{algo === 'twobend' ? t('placeholder_2') : t('placeholder_2_onebend')}</p>
             </div>
           )}
         </section>

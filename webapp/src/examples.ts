@@ -82,6 +82,41 @@ function path(k: number): InputGraph {
   return { n: k, pos, edges };
 }
 
+function icosahedron(): InputGraph {
+  // 5-regulaer, 3-zusammenhaengend; erzwingt in Theorem 1 den Sonderfall
+  // deg(v_n) = Δ. Koordinaten: Tutte-Einbettung mit Aussenflaeche
+  // (0, 2, 3), auf Gitterpunkte gerundet (kreuzungsfrei verifiziert).
+  const pos = [
+    { x: 300, y: 40 }, { x: 300, y: 418 }, { x: 40, y: 560 }, { x: 560, y: 560 },
+    { x: 371, y: 339 }, { x: 300, y: 292 }, { x: 229, y: 339 }, { x: 300, y: 481 },
+    { x: 371, y: 434 }, { x: 324, y: 371 }, { x: 276, y: 371 }, { x: 229, y: 434 },
+  ];
+  const top = 0, bot = 1;
+  const u = (i: number) => 2 + i;
+  const l = (i: number) => 7 + i;
+  const edges: Array<[number, number]> = [];
+  for (let i = 0; i < 5; i++) {
+    edges.push([top, u(i)], [bot, l(i)]);
+    edges.push([u(i), u((i + 1) % 5)], [l(i), l((i + 1) % 5)]);
+    edges.push([u(i), l(i)], [l(i), u((i + 1) % 5)]);
+  }
+  return { n: 12, pos, edges };
+}
+
+function antiprism(k: number): InputGraph {
+  // 4-regulaer, 3-zusammenhaengend: zwei konzentrische Ringe + Zickzack.
+  const outer = circle(300, 280, 230, k);
+  const inner = circle(300, 280, 110, k, -Math.PI / 2 + Math.PI / k);
+  const edges: Array<[number, number]> = [];
+  for (let i = 0; i < k; i++) {
+    edges.push([i, (i + 1) % k]);                 // aussen
+    edges.push([k + i, k + ((i + 1) % k)]);       // innen
+    edges.push([i, k + i]);                       // Zickzack
+    edges.push([(i + 1) % k, k + i]);
+  }
+  return { n: 2 * k, pos: [...outer, ...inner], edges };
+}
+
 export const EXAMPLES: Example[] = [
   { id: 'k4', name: 'K4', description: 'Vollstaendiger Graph, Δ=3 → 2 Steigungen', graph: k4() },
   {
@@ -96,4 +131,14 @@ export const EXAMPLES: Example[] = [
   },
   { id: 'grid44', name: 'Gitter 4×4', description: 'Bikonnektiert, Δ=4 → orthogonal (2 Steigungen)', graph: grid(4, 4) },
   { id: 'path6', name: 'Pfad P₆', description: 'Minimalbeispiel mit Augmentierung', graph: path(6) },
+  {
+    id: 'icosahedron', name: 'Ikosaeder',
+    description: '5-regulaer, 3-zusammenhaengend; Theorem-1-Sonderfall deg(v_n)=Δ',
+    graph: icosahedron(),
+  },
+  {
+    id: 'antiprism6', name: 'Antiprisma A₆',
+    description: '4-regulaer, 3-zusammenhaengend; Theorem 1 ohne Augmentierung',
+    graph: antiprism(6),
+  },
 ];

@@ -1,97 +1,74 @@
 import { useMemo, useRef, useState } from 'react';
-import type { DrawingResult, Point } from '../algorithm/types';
+import type { Point } from '../algorithm/types';
+import type { OneBendResult } from '../algorithm/onebend/types';
 import { useI18n } from '../i18n';
-import { slopeColor } from './colors';
+import { oneBendSlopeColor, oneBendSlopeIndex } from './colors';
 import { usePanZoom } from './usePanZoom';
 
 interface Props {
-  result: DrawingResult;
-  step: number; // 1..n; n = komplette Zeichnung
+  result: OneBendResult;
+  /** 1..S = Snapshots; S+1 = Schritt "Fertig" (ohne Hervorhebungen). */
+  step: number;
   selected: number | null;
   onSelect: (v: number | null) => void;
 }
 
 /**
- * SVG-Ergebnisansicht mit Pan/Zoom.
+ * SVG-Ergebnisansicht fuer Theorem 1 (Snapshot-basiert): Streckungen
+ * verschieben bereits platzierte Knoten, deshalb rendert jeder Schritt
+ * den vollstaendigen Zwischenstand seines Snapshots.
  *
- * Modi:
- *  - kompakt: y-Achse gleichmaessig gestaucht (anisotrope Skalierung).
- *    Parallelitaet und Kreuzungsfreiheit bleiben dabei erhalten, nur der
- *    Betrag der Steigungen erscheint verkleinert.
- *  - massstabsgetreu: isotropes Gitter (wahre Steigungen).
+ * Modi wie bei Theorem 4: kompakt (y anisotrop gestaucht -- linear,
+ * Parallelitaet und Kreuzungsfreiheit bleiben erhalten) oder
+ * massstabsgetreu. Theorem-1-Zeichnungen sind O(Δn³) hoch und O(Δn²)
+ * breit; ohne Stauchung sind sie praktisch nicht ueberschaubar.
  */
-export function DrawingView({ result, step, selected, onSelect }: Props) {
+export function OneBendView({ result, step, selected, onSelect }: Props) {
   const { t } = useI18n();
   const svgRef = useRef<SVGSVGElement>(null);
   const [compact, setCompact] = useState(true);
   const [showAug, setShowAug] = useState(true);
   const { tf, reset, movedRef, handlers } = usePanZoom(svgRef);
 
-  const n = result.stats.n;
-  const R = result.stats.rowSpacing;
-  const ev = step >= 1 && step <= result.trace.length ? result.trace[step - 1] : null;
+  const S = result.snapshots.length;
+  const snap = step >= 1 && step <= S ? result.snapshots[step - 1] : null;
 
   const scene = useMemo(() => {
-    // Skalierung: x-Zelle fest; y so, dass die Gesamthoehe handhabbar bleibt
     const CELL = 24;
     const width = Math.max(1, result.stats.width);
     const height = Math.max(1, result.stats.height);
     const yScale = compact ? Math.min(CELL, (width * CELL * 1.6) / height) : CELL;
     const mx = (x: number) => x * CELL;
-    // kompakt: y anisotrop gestaucht; massstabsgetreu: gleiche Einheit wie x
     const mapY = (y: number) => -y * yScale;
+
+    const pos: Array<Point | null> = snap ? snap.pos : result.pos;
+    const polylines: Array<Point[] | null> = snap ? snap.polylines : result.polylines;
+    const hlEdges = new Set(snap ? snap.newEdges : []);
+    const hlNodes = new Set(snap ? snap.newNodes : []);
 
     interface Seg { x1: number; y1: number; x2: number; y2: number; color: string; aug: boolean; edge: number }
     const segs: Seg[] = [];
-    const stubs: Seg[] = [];
-
-    const stOf = (v: number) => result.st[v];
-    const lowHigh = (e: number): [number, number] => {
-      const { u, v } = result.edges[e];
-      return stOf(u) < stOf(v) ? [u, v] : [v, u];
-    };
-
-    result.edges.forEach((edge, e) => {
-      if (edge.aug && !showAug) return;
-      const [lowV, highV] = lowHigh(e);
-      const pl = result.polylines[e];
-      const color = (a: Point, b: Point) =>
-        slopeColor(a.x === b.x ? 'inf' : (b.y - a.y) / (b.x - a.x), result.stats.deltaEff);
-
-      if (stOf(highV) <= step) {
-        for (let j = 0; j + 1 < pl.length; j++) {
-          segs.push({
-            x1: mx(pl[j].x), y1: mapY(pl[j].y), x2: mx(pl[j + 1].x), y2: mapY(pl[j + 1].y),
-            color: color(pl[j], pl[j + 1]), aug: edge.aug, edge: e,
-          });
-        }
-      } else if (stOf(lowV) <= step) {
-        // Pending-Stummel: erstes Segment + Vertikale bis zur "Front"
-        const frontier = (step - 1) * R + 0.55 * R;
-        const pts: Point[] = [result.pos[lowV]];
-        if (pl.length >= 3) {
-          const b = pl[1];
-          const isSourceBend =
-            Math.abs(b.y - result.pos[lowV].y) < Math.abs(b.y - result.pos[highV].y);
-          if (isSourceBend) pts.push(b);
-        }
-        pts.push({ x: result.xEdge[e], y: Math.max(frontier, pts[pts.length - 1].y + 1) });
-        for (let j = 0; j + 1 < pts.length; j++) {
-          stubs.push({
-            x1: mx(pts[j].x), y1: mapY(pts[j].y), x2: mx(pts[j + 1].x), y2: mapY(pts[j + 1].y),
-            color: color(pts[j], pts[j + 1]), aug: edge.aug, edge: e,
-          });
-        }
+    polylines.forEach((pl, e) => {
+      if (!pl) return;
+      if (result.edges[e].aug && !showAug) return;
+      for (let j = 0; j + 1 < pl.length; j++) {
+        const a = pl[j], b = pl[j + 1];
+        const idx = oneBendSlopeIndex(b.x - a.x, b.y - a.y, result.stats.deltaEff, result.stats.k);
+        segs.push({
+          x1: mx(a.x), y1: mapY(a.y), x2: mx(b.x), y2: mapY(b.y),
+          color: oneBendSlopeColor(idx), aug: result.edges[e].aug, edge: e,
+        });
       }
     });
 
-    const nodes = result.pos
-      .map((p, v) => ({ v, x: mx(p.x), y: mapY(p.y), st: stOf(v) }))
-      .filter((nd) => nd.st <= step);
+    const nodes = pos
+      .map((p, v) => (p ? { v, x: mx(p.x), y: mapY(p.y), part: result.part[v] } : null))
+      .filter((nd): nd is NonNullable<typeof nd> => nd !== null);
 
-    // Zeilen-Hilfslinien
-    const rows: Array<{ y: number; st: number }> = [];
-    for (let i = 1; i <= Math.min(step, n); i++) rows.push({ y: mapY((i - 1) * R), st: i });
+    // Zeilen-Hilfslinien an den (wenigen) Knotenzeilen
+    const rowYs = [...new Set(pos.filter((p): p is Point => p !== null).map((p) => p.y))]
+      .sort((a, b) => a - b);
+    const rows = rowYs.map((y) => ({ y: mapY(y), label: y }));
 
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     const ext = (x: number, y: number) => {
@@ -99,23 +76,19 @@ export function DrawingView({ result, step, selected, onSelect }: Props) {
       minY = Math.min(minY, y); maxY = Math.max(maxY, y);
     };
     segs.forEach((s) => { ext(s.x1, s.y1); ext(s.x2, s.y2); });
-    stubs.forEach((s) => { ext(s.x1, s.y1); ext(s.x2, s.y2); });
     nodes.forEach((nd) => ext(nd.x, nd.y));
     if (!isFinite(minX)) { minX = 0; maxX = 1; minY = 0; maxY = 1; }
 
     const pad = 40;
     return {
-      segs, stubs, nodes, rows,
+      segs, nodes, rows, hlEdges, hlNodes,
       viewBox: `${minX - pad} ${minY - pad} ${maxX - minX + 2 * pad} ${maxY - minY + 2 * pad}`,
     };
-  }, [result, step, compact, showAug, R, n]);
+  }, [result, snap, compact, showAug]);
 
   const onBackgroundClick = () => {
     if (!movedRef.current) onSelect(null);
   };
-
-  const highlightOut = new Set(ev?.outEdges ?? []);
-  const medianEdge = ev?.medianEdge ?? -1;
 
   // Zum ausgewaehlten Knoten inzidente Kanten
   const incident = useMemo(() => {
@@ -151,12 +124,12 @@ export function DrawingView({ result, step, selected, onSelect }: Props) {
       >
         <g transform={`translate(${tf.x} ${tf.y}) scale(${tf.k})`}>
           {scene.rows.map((r) => (
-            <line key={'row' + r.st} x1={-2000} x2={4000} y1={r.y} y2={r.y} className="row-guide" />
+            <line key={'row' + r.label} x1={-4000} x2={8000} y1={r.y} y2={r.y} className="row-guide" />
           ))}
-          {/* Halo-Unterlagen: Median-Kante des aktuellen Schritts (orange)
-              und zum ausgewaehlten Knoten inzidente Kanten (blau). */}
+          {/* Halo-Unterlagen: neue Kanten des Schritts (orange) und zum
+              ausgewaehlten Knoten inzidente Kanten (blau). */}
           {scene.segs
-            .filter((s) => s.edge === medianEdge || incident.has(s.edge))
+            .filter((s) => scene.hlEdges.has(s.edge) || incident.has(s.edge))
             .map((s, i) => (
               <line
                 key={'halo' + i}
@@ -164,18 +137,6 @@ export function DrawingView({ result, step, selected, onSelect }: Props) {
                 className={'halo' + (incident.has(s.edge) ? ' selected' : ' median')}
               />
             ))}
-          {scene.stubs.map((s, i) => (
-            <line
-              key={'stub' + i}
-              x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
-              stroke={s.color}
-              className={
-                'seg stub' + (s.aug ? ' aug' : '') +
-                (highlightOut.has(s.edge) ? ' hl-out' : '') +
-                (selected !== null && !incident.has(s.edge) ? ' dim' : '')
-              }
-            />
-          ))}
           {scene.segs.map((s, i) => (
             <line
               key={'seg' + i}
@@ -191,7 +152,7 @@ export function DrawingView({ result, step, selected, onSelect }: Props) {
             <g
               key={nd.v}
               className={
-                'vertex' + (ev && nd.v === ev.v ? ' current' : '') +
+                'vertex' + (scene.hlNodes.has(nd.v) ? ' current' : '') +
                 (nd.v === selected ? ' selected' : '')
               }
               onMouseDown={(e) => e.stopPropagation()}
@@ -202,7 +163,7 @@ export function DrawingView({ result, step, selected, onSelect }: Props) {
             >
               <circle cx={nd.x} cy={nd.y} r={7} />
               <text x={nd.x} y={nd.y - 11} textAnchor="middle">
-                {nd.v} ({nd.st})
+                {nd.v} (P{nd.part})
               </text>
             </g>
           ))}
