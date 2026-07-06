@@ -23,6 +23,13 @@ die Webapp eigenständige **TypeScript-Ports** (`src/algorithm/`,
 
 - **Algorithmus-Umschalter**: „2 Knicke · ⌈Δ/2⌉" (Theorem 4) oder
   „1 Knick · 3Δ−8" (Theorem 1) in der Kopfzeile.
+- **Parameter k (Theorem 1)**: statt der Papier-Wahl k = 4·Δ_eff·n² (nötig für
+  den Flächenbeweis) lässt sich k manuell setzen (ganzzahlig, ≥ Δ_eff−2).
+  Kleines k macht die Zeichnung dramatisch flacher — die steilen Steigungen
+  ±k/j werden als echte Schrägen sichtbar — auf Kosten der (dann nicht mehr
+  durch 12Δn² beschränkten) Breite; der Verifier prüft stattdessen die
+  k-parametrisierte Höheninvariante H ≤ n·(B+k). Ein Koordinaten-Guard bricht
+  bei extremem Breitenwachstum sauber ab.
 - **Grapheditor**: Knoten setzen, Kanten ziehen, verschieben, löschen — mit
   kontextabhängigen Cursorn und Hover-Feedback. Kreuzungsfreie Zeichnungen behalten
   ihre gezeichnete Einbettung (Rotationssystem aus der Geometrie). Zeichnungen mit

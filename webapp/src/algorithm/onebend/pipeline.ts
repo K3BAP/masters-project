@@ -15,7 +15,23 @@ import { drawOneBend } from './drawing';
 import { emptyOneBendStats, type OneBendResult } from './types';
 import { verifyOneBendDrawing } from './verifier';
 
-export function computeOneBendDrawing(input: InputGraph): OneBendResult {
+export interface OneBendOptions {
+  /**
+   * Manuelles k (Zeilenabstand / steile Steigungen +-k/j). Muss ganzzahlig
+   * und mindestens deltaEff - 2 sein, damit die steilen Steigungen k/j > 1
+   * bleiben und nicht mit den flachen j/(deltaEff-3) < 1 kollidieren.
+   * Ohne Angabe gilt die Papier-Wahl k = 4 * deltaEff * n^2 (Flaechenbeweis).
+   */
+  k?: number;
+}
+
+/** Obergrenze fuer manuelles k (haelt alle Rechnungen im exakten Bereich). */
+export const K_MAX = 1_000_000_000;
+
+export function computeOneBendDrawing(
+  input: InputGraph,
+  options?: OneBendOptions,
+): OneBendResult {
   const failed = (error: string): OneBendResult => ({
     ok: false, error, pos: [], edges: [], polylines: [], colors: [],
     part: [], v1: -1, v2: -1, vn: -1, stats: emptyOneBendStats(), snapshots: [],
@@ -72,7 +88,19 @@ export function computeOneBendDrawing(input: InputGraph): OneBendResult {
 
   const deltaAug = Math.max(...eg.rot.map((r) => r.length));
   const deltaEff = Math.max(deltaAug, 5);
-  const k = 4 * deltaEff * eg.n * eg.n;
+
+  // k: Papier-Wahl 4*deltaEff*n^2 oder manueller Wert (erst hier
+  // validierbar, weil deltaEff von der Augmentierung abhaengt).
+  const kCustom = options?.k !== undefined;
+  const kMin = deltaEff - 2;
+  let k = 4 * deltaEff * eg.n * eg.n;
+  if (kCustom) {
+    const kc = options!.k!;
+    if (!Number.isInteger(kc) || kc < kMin || kc > K_MAX) {
+      return failed(`Parameter k muss eine ganze Zahl zwischen ${kMin} und ${K_MAX} sein.`);
+    }
+    k = kc;
+  }
 
   const co = computeCanonicalOrder(eg);
   if (!co.order) return failed('Kanonische Ordnung: ' + (co.error ?? 'unbekannt'));
@@ -103,6 +131,7 @@ export function computeOneBendDrawing(input: InputGraph): OneBendResult {
       deltaAug,
       deltaEff,
       k,
+      kCustom,
       slopesAllowed: 3 * deltaEff - 8,
       slopesAllowedStrict: augmented
         ? Math.ceil((9 * deltaOrig) / 2) + 1

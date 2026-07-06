@@ -23,6 +23,15 @@ export interface EdgeRec {
   bend: Point | null;
 }
 
+/**
+ * Sicherer Koordinatenbereich (2^48). Bei manuell kleinem k waechst die
+ * Breite pro Schritt etwa um den Faktor (1 + 2*Delta/k); der Guard nach
+ * jedem Schritt bricht ab, BEVOR Zwischenwerte die exakte Ganzzahl-
+ * Darstellung von Number (2^53) verlassen koennten -- ein einzelner
+ * Schritt ab einem noch gueltigen Zustand bleibt nachweislich exakt.
+ */
+const MAX_COORD = 2 ** 48;
+
 export interface DrawOutput {
   ok: boolean;
   error?: string;
@@ -112,6 +121,13 @@ class Draw {
   fail(msg: string): false {
     if (!this.error) this.error = msg;
     return false;
+  }
+
+  // v2 ist der rechteste Konturknoten (Kontur endet dort, x-monoton) und
+  // H die groesste y-Koordinate -- beide zusammen dominieren alle Punkte.
+  coordGuard(): boolean {
+    if (this.X[this.v2] <= MAX_COORD && this.H <= MAX_COORD) return true;
+    return this.fail('Zeichnung uebersteigt den sicheren Koordinatenbereich (k zu klein fuer diesen Graphen?).');
   }
 
   eid(a: number, b: number): number {
@@ -512,9 +528,11 @@ class Draw {
         }
         if (!(lowdeg === 2 ? this.case1(pt, i) : this.case2(pt[0], i))) return false;
       }
+      if (!this.coordGuard()) return false;
     }
 
     if (!this.prepareReinserts()) return false;
+    if (!this.coordGuard()) return false;
     if (this.specialVn && !this.reinsertSpecial()) return false;
     return this.reinsertBase();
   }

@@ -12,7 +12,7 @@ import { planarEmbedding } from '../planarity';
 import type { EmbeddedGraph, InputGraph } from '../types';
 import { augmentTriconnected, isTriconnected } from '../onebend/augmentTriconnected';
 import { checkCanonicalOrder, computeCanonicalOrder } from '../onebend/canonicalOrder';
-import { computeOneBendDrawing } from '../onebend/pipeline';
+import { computeOneBendDrawing, K_MAX } from '../onebend/pipeline';
 
 // ---------------------------------------------------------------------
 // Hilfen: Graphen aus Kantenlisten (Kreispositionen; bei Kreuzungen
@@ -251,6 +251,82 @@ describe('Snapshots (Stepper-Grundlage)', () => {
   it('Ikosaeder enthaelt einen special-Schritt', () => {
     const res = expectPass(icosahedron(), 'Ikosaeder');
     expect(res.snapshots.some((s) => s.kind === 'special')).toBe(true);
+  });
+});
+
+describe('Manueller Parameter k', () => {
+  it('Ikosaeder besteht mit vielen k-Werten (Deff=5, Minimum 3)', () => {
+    for (const k of [3, 4, 7, 100, 2880, 1_000_000]) {
+      const res = computeOneBendDrawing(icosahedron(), { k });
+      expect(res.ok, `k=${k}: ${res.error ?? ''}`).toBe(true);
+      expect(res.verified, `k=${k}:\n${res.report ?? ''}`).toBe(true);
+      expect(res.stats.k).toBe(k);
+      expect(res.stats.kCustom).toBe(true);
+      expect(res.stats.slopesUsed).toBeLessThanOrEqual(7);
+    }
+  });
+
+  it('kleines k macht die Zeichnung flacher', () => {
+    const auto = computeOneBendDrawing(icosahedron());
+    const small = computeOneBendDrawing(icosahedron(), { k: 3 });
+    expect(auto.verified).toBe(true);
+    expect(small.verified).toBe(true);
+    expect(small.stats.height).toBeLessThan(auto.stats.height);
+  });
+
+  it('weitere Familien mit manuellem k', () => {
+    for (const k of [10, 1000]) {
+      for (const [g, label] of [
+        [prism(5, true), 'Antiprisma 5'],
+        [wheel(9), 'Rad 9'],
+        [grid(4, 4), 'Gitter 4x4'],
+      ] as Array<[InputGraph, string]>) {
+        const res = computeOneBendDrawing(g, { k });
+        expect(res.ok, `${label} k=${k}: ${res.error ?? ''}`).toBe(true);
+        expect(res.verified, `${label} k=${k}:\n${res.report ?? ''}`).toBe(true);
+      }
+    }
+  });
+
+  it('Zufallsgraphen mit manuellem k bestehen die Verifikation', () => {
+    for (let s = 1; s <= 10; s++) {
+      const g = randomPlanarGraph(6 + s, (s % 3) * 0.5, 12000 + s);
+      for (const k of [50, 5000]) {
+        const res = computeOneBendDrawing(g, { k });
+        expect(res.ok, `Seed ${12000 + s} k=${k}: ${res.error ?? ''}`).toBe(true);
+        expect(res.verified, `Seed ${12000 + s} k=${k}:\n${res.report ?? ''}`).toBe(true);
+      }
+    }
+  });
+
+  it('validiert Untergrenze, Ganzzahligkeit und Obergrenze', () => {
+    for (const bad of [2, 0, -5, 2.5, NaN, K_MAX + 1]) {
+      const res = computeOneBendDrawing(icosahedron(), { k: bad });
+      expect(res.ok, `k=${bad} muss abgelehnt werden`).toBe(false);
+      expect(res.error).toMatch(/Parameter k/);
+    }
+  });
+
+  it('ohne Option bleibt die Papier-Wahl 4·Deff·n² aktiv', () => {
+    const res = computeOneBendDrawing(icosahedron());
+    expect(res.stats.k).toBe(4 * 5 * 12 * 12);
+    expect(res.stats.kCustom).toBe(false);
+  });
+
+  it('bricht bei drohendem Koordinatenueberlauf sauber ab', () => {
+    // Minimal-nahes k auf groesseren Graphen: die Breite waechst pro
+    // Schritt etwa um den Faktor 1+2Delta/k. Entweder das Ergebnis ist
+    // sauber verifiziert oder der Guard liefert einen klaren Fehler --
+    // niemals eine unverifizierte Zeichnung oder ein Absturz.
+    for (let s = 1; s <= 5; s++) {
+      const g = randomPlanarGraph(40 + s, 1, 13000 + s);
+      const res = computeOneBendDrawing(g, { k: 20 });
+      if (res.ok) {
+        expect(res.verified, `Seed ${13000 + s}:\n${res.report ?? ''}`).toBe(true);
+      } else {
+        expect(res.error).toMatch(/Koordinatenbereich|Parameter k/);
+      }
+    }
   });
 });
 

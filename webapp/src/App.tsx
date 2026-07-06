@@ -29,6 +29,9 @@ export default function App() {
   const [obResult, setObResult] = useState<OneBendResult | null>(null);
   const [step, setStep] = useState(0);
   const [stale, setStale] = useState(false);
+  // Theorem 1: Parameter k automatisch (4·Δ_eff·n², Papier-Wahl) oder manuell
+  const [kAuto, setKAuto] = useState(true);
+  const [kText, setKText] = useState('100');
   // In der Ergebnisansicht angeklickter Knoten; wird auch im Editor markiert.
   const [selected, setSelected] = useState<number | null>(null);
 
@@ -47,7 +50,7 @@ export default function App() {
       setObResult(null);
       setStep(res.ok ? res.stats.n + 1 : 0); // n+1 = Schritt "Fertig"
     } else {
-      const res = computeOneBendDrawing(graph);
+      const res = computeOneBendDrawing(graph, kAuto ? undefined : { k: Number(kText) });
       setObResult(res);
       setResult(null);
       setStep(res.ok ? res.snapshots.length + 1 : 0); // S+1 = "Fertig"
@@ -139,6 +142,31 @@ export default function App() {
         </section>
 
         <section className="right">
+          {algo === 'onebend' && (
+            <div className="kparam">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={kAuto}
+                  onChange={(e) => { setKAuto(e.target.checked); if (obResult) setStale(true); }}
+                />
+                {t('kparam_auto')}
+              </label>
+              {!kAuto && (
+                <label className="kparam-value">
+                  k =
+                  <input
+                    type="number"
+                    min={2}
+                    step={1}
+                    value={kText}
+                    onChange={(e) => { setKText(e.target.value); if (obResult) setStale(true); }}
+                  />
+                </label>
+              )}
+              <span className="kparam-hint">{t('kparam_hint')}</span>
+            </div>
+          )}
           {activeError && (
             <div className="error-banner">{translateError(activeError)}</div>
           )}

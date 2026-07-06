@@ -11,7 +11,10 @@ export interface OneBendStats {
   deltaOrig: number;
   deltaAug: number;
   deltaEff: number; // max(deltaAug, 5) -- bestimmt die Steigungsmenge S
-  k: number; // Parameter k = 4 * deltaEff * n^2
+  k: number; // Parameter k (automatisch: 4 * deltaEff * n^2)
+  /** true = k wurde manuell gesetzt; die absolute Flaechenschranke des
+   *  Papers gilt dann nicht (sie setzt k = 4*deltaEff*n^2 voraus). */
+  kCustom: boolean;
   slopesAllowed: number; // |S| = 3*deltaEff - 8
   /** 3*max(Delta,5)-8 (3-zusammenhaengend) bzw. ceil(9*Delta/2)+1 (Kor. 2). */
   slopesAllowedStrict: number;
@@ -62,7 +65,7 @@ export interface OneBendResult {
 
 export function emptyOneBendStats(): OneBendStats {
   return {
-    n: 0, m: 0, deltaOrig: 0, deltaAug: 0, deltaEff: 0, k: 0,
+    n: 0, m: 0, deltaOrig: 0, deltaAug: 0, deltaEff: 0, k: 0, kCustom: false,
     slopesAllowed: 0, slopesAllowedStrict: 0, slopesUsed: 0,
     augmented: false, specialVn: false, parts: 0, width: 0, height: 0,
   };

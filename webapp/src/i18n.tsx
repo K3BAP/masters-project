@@ -147,6 +147,16 @@ const de = {
 
   legend_title: 'Steigungsmenge S ({n} Steigungen)',
 
+  kparam_auto: 'k automatisch (4·Δ_eff·n², Papier-Wahl)',
+  kparam_hint:
+    'k bestimmt den Zeilenabstand und die steilen Steigungen ±k/j. Ganzzahlig, mindestens ' +
+    'Δ_eff−2; kleines k macht die Zeichnung flacher, aber breiter (die Flächenschranke des ' +
+    'Papers gilt nur für die automatische Wahl).',
+  error_k_invalid: 'Parameter k muss eine ganze Zahl zwischen {min} und {max} sein.',
+  error_coord_range:
+    'Die Zeichnung übersteigt den sicheren Koordinatenbereich – k ist für diesen Graphen ' +
+    'zu klein (die Breite wächst pro Schritt etwa um den Faktor 1+2Δ/k).',
+
   error_empty: 'Leerer Graph.',
   error_disconnected: 'Der Graph ist nicht zusammenhängend.',
   error_not_planar: 'Der Graph ist nicht planar.',
@@ -286,6 +296,16 @@ const en: Record<MsgKey, string> = {
 
   legend_title: 'Slope set S ({n} slopes)',
 
+  kparam_auto: 'automatic k (4·Δ_eff·n², paper choice)',
+  kparam_hint:
+    'k determines the row spacing and the steep slopes ±k/j. Integer, at least Δ_eff−2; ' +
+    'a small k makes the drawing flatter but wider (the paper’s area bound only holds ' +
+    'for the automatic choice).',
+  error_k_invalid: 'Parameter k must be an integer between {min} and {max}.',
+  error_coord_range:
+    'The drawing exceeds the safe coordinate range – k is too small for this graph ' +
+    '(the width grows by roughly a factor of 1+2Δ/k per step).',
+
   error_empty: 'Empty graph.',
   error_disconnected: 'The graph is not connected.',
   error_not_planar: 'The graph is not planar.',
@@ -423,6 +443,16 @@ const el: Record<MsgKey, string> = {
 
   legend_title: 'Σύνολο κλίσεων S ({n} κλίσεις)',
 
+  kparam_auto: 'αυτόματο k (4·Δ_eff·n², επιλογή της εργασίας)',
+  kparam_hint:
+    'Το k καθορίζει την απόσταση των γραμμών και τις απότομες κλίσεις ±k/j. Ακέραιο, ' +
+    'τουλάχιστον Δ_eff−2· μικρό k κάνει το σχέδιο χαμηλότερο αλλά πλατύτερο (το φράγμα ' +
+    'εμβαδού της εργασίας ισχύει μόνο για την αυτόματη επιλογή).',
+  error_k_invalid: 'Η παράμετρος k πρέπει να είναι ακέραιος μεταξύ {min} και {max}.',
+  error_coord_range:
+    'Το σχέδιο υπερβαίνει το ασφαλές εύρος συντεταγμένων – το k είναι πολύ μικρό για αυτό ' +
+    'το γράφημα (το πλάτος αυξάνεται περίπου κατά συντελεστή 1+2Δ/k ανά βήμα).',
+
   error_empty: 'Κενό γράφημα.',
   error_disconnected: 'Το γράφημα δεν είναι συνεκτικό.',
   error_not_planar: 'Το γράφημα δεν είναι επίπεδο.',
@@ -437,7 +467,12 @@ const PIPELINE_ERRORS: Array<[string, MsgKey]> = [
   ['Leerer Graph.', 'error_empty'],
   ['Der Graph ist nicht zusammenhaengend.', 'error_disconnected'],
   ['Der Graph ist nicht planar.', 'error_not_planar'],
+  ['Zeichnung fehlgeschlagen: Zeichnung uebersteigt den sicheren Koordinatenbereich ' +
+   '(k zu klein fuer diesen Graphen?).', 'error_coord_range'],
 ];
+
+// Parametrisierte Pipeline-Meldung: ungueltiges manuelles k (Theorem 1).
+const K_INVALID_RE = /^Parameter k muss eine ganze Zahl zwischen (\d+) und (\d+) sein\.$/;
 
 export function format(template: string, params?: Record<string, string | number>): string {
   if (!params) return template;
@@ -481,7 +516,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const translateError = (msg: string) => {
     const hit = PIPELINE_ERRORS.find(([g]) => g === msg);
-    return hit ? t(hit[1]) : msg;
+    if (hit) return t(hit[1]);
+    const km = K_INVALID_RE.exec(msg);
+    if (km) return t('error_k_invalid', { min: km[1], max: km[2] });
+    return msg;
   };
 
   return (

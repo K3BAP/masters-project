@@ -214,6 +214,31 @@ main {
 .legend line { stroke-width: 2; }
 .legend text { fill: var(--muted); font-size: 11px; }
 
+/* ---------------- Parameter k (Theorem 1) ---------------- */
+.kparam {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--muted);
+}
+.kparam label { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.kparam-value input {
+  width: 110px;
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+.kparam-hint { flex: 1; min-width: 180px; }
+
 /* ---------------- Sonstiges ---------------- */
 .placeholder {
   background: var(--panel);

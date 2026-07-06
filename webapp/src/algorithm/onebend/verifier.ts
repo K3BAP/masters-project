@@ -44,25 +44,27 @@ function segIntersect(s: Seg, t: Seg): { r: 0 | 1 | 2; tx?: bigint; ty?: bigint 
 
 type SlopeClass = 'vertical' | 'horizontal' | 'rsteep' | 'lsteep' | 'flat' | 'bad';
 
+// BigInt-Arithmetik: bei manuell gesetztem k koennen Koordinaten (und
+// damit die Produkte k*|dx|) den exakten Number-Bereich verlassen.
 function classifySlope(dx: number, dy: number, k: number, D3: number): SlopeClass {
   if (dx === 0) return dy !== 0 ? 'vertical' : 'bad';
   if (dy === 0) return 'horizontal';
-  const ax = Math.abs(dx), ay = Math.abs(dy);
+  const ax = BigInt(Math.abs(dx)), ay = BigInt(Math.abs(dy));
   const positive = dx > 0 === dy > 0;
   if (ay > ax) {
     // steil: |dy| * j == k * |dx| fuer ein j in 1..D3
-    const num = k * ax;
-    if (num % ay !== 0) return 'bad';
+    const num = BigInt(k) * ax;
+    if (num % ay !== 0n) return 'bad';
     const j = num / ay;
-    if (j < 1 || j > D3) return 'bad';
+    if (j < 1n || j > BigInt(D3)) return 'bad';
     return positive ? 'rsteep' : 'lsteep';
   }
   // flach: |dy| * D3 == j * |dx| fuer ein j in 1..D3-1, Steigung > 0
   if (!positive) return 'bad';
-  const num = ay * D3;
-  if (num % ax !== 0) return 'bad';
+  const num = ay * BigInt(D3);
+  if (num % ax !== 0n) return 'bad';
   const j = num / ax;
-  if (j < 1 || j > D3 - 1) return 'bad';
+  if (j < 1n || j > BigInt(D3 - 1)) return 'bad';
   return 'flat';
 }
 
@@ -195,15 +197,27 @@ export function verifyOneBendDrawing(result: OneBendResult): { ok: boolean; repo
   stats.width = n ? maxX - minX : 0;
   stats.height = n ? maxY - minY : 0;
   if (n >= 3) {
-    const N = Math.max(n, 6);
-    const wb = 12 * deltaEff * N * N;
-    const hb = 18 * deltaEff * N * N * N;
-    if (stats.width > wb) err(`Breite ${stats.width} > 12*Deff*N^2 = ${wb}`);
-    if (stats.height > hb) err(`Hoehe ${stats.height} > 18*Deff*N^3 = ${hb}`);
+    if (!stats.kCustom) {
+      // Papier-Schranken; sie setzen die Wahl k = 4*Deff*n^2 voraus.
+      const N = Math.max(n, 6);
+      const wb = 12 * deltaEff * N * N;
+      const hb = 18 * deltaEff * N * N * N;
+      if (stats.width > wb) err(`Breite ${stats.width} > 12*Deff*N^2 = ${wb}`);
+      if (stats.height > hb) err(`Hoehe ${stats.height} > 18*Deff*N^3 = ${hb}`);
+    } else {
+      // Manuelles k: die absolute Breitenschranke gilt nicht (fuer
+      // kleines k waechst die Breite bewusst ueber 12*Deff*n^2 hinaus).
+      // k-parametrisierte Hoeheninvariante aus Gl. (2)/(4) des Papers:
+      // jeder Schritt hebt H um hoechstens W + k, die Sonderfall-Kante
+      // um hoechstens W  =>  H <= n * (W + k) fuer jedes gueltige k.
+      const hb = n * (stats.width + k);
+      if (stats.height > hb) err(`Hoehe ${stats.height} > n*(B+k) = ${hb}`);
+    }
   }
 
   const head =
-    `n=${stats.n} m=${stats.m} Delta=${stats.deltaOrig} Deff=${stats.deltaEff} k=${stats.k} | ` +
+    `n=${stats.n} m=${stats.m} Delta=${stats.deltaOrig} Deff=${stats.deltaEff} ` +
+    `k=${stats.k}${stats.kCustom ? ' (manuell; Papier-Flaechenschranke entfaellt)' : ''} | ` +
     `Steigungen: ${stats.slopesUsed}/${stats.slopesAllowed} | ` +
     `Gitter: ${stats.width} x ${stats.height} | Teile: ${stats.parts}` +
     (stats.augmented ? ' | augmentiert' : '') +
