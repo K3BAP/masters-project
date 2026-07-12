@@ -15,7 +15,7 @@ Dieser Bericht dokumentiert die Implementierung **beider** Hauptalgorithmen des 
 
 **Teil I (Theorem 4 + Korollar 5, Abschnitte 1–8).** Jeder bikonnektierte planare Graph mit Maximalgrad Δ ≥ 3 erhält eine planare Gitterzeichnung mit höchstens **zwei Knicken pro Kante** und höchstens **⌈Δ/2⌉ Steigungen** auf einem Gitter der Größe **O(n) × O(Δn²)**; nicht-bikonnektierte planare Graphen benötigen nach Augmentierung höchstens eine zusätzliche Steigung (Korollar 5). Der Algorithmus ist die direkte Verallgemeinerung des Biedl-Kant-Algorithmus (Δ ≤ 4, zwei Steigungen), dessen Implementierung in diesem Repository (`biedl_kant.cpp`) als strukturelle Vorlage diente. Die Umsetzung wurde gegen die Spezifikationen mit einem exakt rechnenden geometrischen Verifier und einem randomisierten Stresstest über **ca. 8 400 Testinstanzen** validiert (null Fehlschläge); die Aussagekraft des Verifiers selbst wurde durch einen Mutationstest belegt. Zwei wohlbegründete Abweichungen von der Papierkonstruktion waren notwendig, weil LEDA-Primitive (`ST_NUMBERING`, `Make_Biconnected`) die vorausgesetzten Eigenschaften nicht liefern; beide sind theoretisch fundiert und ändern keine der bewiesenen Schranken (Abschnitt 5).
 
-**Teil II (Theorem 1 + Korollar 2, Abschnitte 9–13).** Jeder **3-fach zusammenhängende** planare Graph mit Δ ≥ 5 erhält eine planare Gitterzeichnung mit höchstens **einem Knick pro Kante** und höchstens **3Δ−8 Steigungen**; beliebige planare Graphen folgen über eine gradbeschränkte Augmentierung zu 3-Zusammenhang (Korollar 2, ⌈9Δ/2⌉+1 Steigungen). Anders als Theorem 4 lässt sich hier die Geometrie **nicht** aufschieben: Der Algorithmus arbeitet mit expliziter kanonischer Ordnung, einer Schnyder-artigen 4-Kantenfärbung und einer **Cut-basierten horizontalen Streckung**. Teil II besteht aus einer LEDA/GraphWin-Referenzimplementierung (`onebend_core.cpp`, `canonical_order.cpp`, `planar_aug.cpp`) **und** einem eigenständigen, ebenfalls verifizierten **TypeScript-Port** in der begleitenden Webanwendung. Beide wurden über einen exakten 1-Bend-Verifier stressgetestet (C++ `onebend_test`: **297 Instanzen**, TypeScript-Suite: **180 Tests**, je null Fehlschläge). Als bewusste Erweiterung gegenüber der Papierkonstruktion ist der zentrale Geometrieparameter **k** in der Webapp frei wählbar (Abschnitt 12); die Papier-Wahl k = 4Δn² wird nur für den Flächenbeweis benötigt, nicht für die Korrektheit.
+**Teil II (Theorem 1 + Korollar 2, Abschnitte 9–14).** Jeder **3-fach zusammenhängende** planare Graph mit Δ ≥ 5 erhält eine planare Gitterzeichnung mit höchstens **einem Knick pro Kante** und höchstens **3Δ−8 Steigungen**; beliebige planare Graphen folgen über eine gradbeschränkte Augmentierung zu 3-Zusammenhang (Korollar 2, ⌈9Δ/2⌉+1 Steigungen). Anders als Theorem 4 lässt sich hier die Geometrie **nicht** aufschieben: Der Algorithmus arbeitet mit expliziter kanonischer Ordnung, einer Schnyder-artigen 4-Kantenfärbung und einer **Cut-basierten horizontalen Streckung**. Teil II besteht aus einer LEDA/GraphWin-Referenzimplementierung (`onebend_core.cpp`, `canonical_order.cpp`, `planar_aug.cpp`) **und** einem eigenständigen, ebenfalls verifizierten **TypeScript-Port** in der begleitenden Webanwendung. Beide wurden über einen exakten 1-Bend-Verifier stressgetestet (C++ `onebend_test`: **297 Instanzen**, TypeScript-Suite: **189 Tests**, je null Fehlschläge). Zwei bewusste Erweiterungen gegenüber der Papierkonstruktion sind in der Webapp verfügbar: Der zentrale Geometrieparameter **k** ist frei wählbar (Abschnitt 12; die Papier-Wahl k = 4Δn² wird nur für den Flächenbeweis benötigt, nicht für die Korrektheit), und die **Wurzelknoten v₁, v₂, v_n** der kanonischen Ordnung sind vorgebbar (Abschnitt 13, etwa zum Vergleich mit den Abbildungen des Papers).
 
 ---
 
@@ -285,7 +285,7 @@ Hat die Senke v_n vollen Grad, kann die rechteste Kante (w_Δ, v_n) nicht regul�
 
 ### 11.6 Korollar 2: gradbeschränkte Trikonnektivierung
 
-Die Augmentierungskette ist zusammenhängend → bikonnektiert → **3-zusammenhängend**. Den letzten Schritt leisten `augment_triconnected_bounded` (C++, LEDA `Is_Triconnected` liefert die Separationspaare) bzw. `augmentTriconnected` (TS). Der TS-Port ermittelt Separationspaare per **Brute Force** (`separationPair`: für jeden Knoten x wird ein Artikulationspunkt von G−x gesucht — n ist klein). Zu jedem Separationspaar {a, b} wird eine Chorde zwischen zwei Knoten **verschiedener Komponenten** von G−{a, b} auf einer gemeinsamen Fläche eingefügt; a und b selbst sind **nie** Endpunkte (ihr Grad wächst nicht). Die Auswahl ist gierig (minimales max(deg), dann minimale Gradsumme); die Einbettung wird über die Face-Corners fortgeschrieben, Hilfskanten erhalten `aug = true`. Die Einhaltung der Steigungsschranke wird nicht angenommen, sondern für jede Instanz vom Verifier nachgeprüft (Abschnitt 13).
+Die Augmentierungskette ist zusammenhängend → bikonnektiert → **3-zusammenhängend**. Den letzten Schritt leisten `augment_triconnected_bounded` (C++, LEDA `Is_Triconnected` liefert die Separationspaare) bzw. `augmentTriconnected` (TS). Der TS-Port ermittelt Separationspaare per **Brute Force** (`separationPair`: für jeden Knoten x wird ein Artikulationspunkt von G−x gesucht — n ist klein). Zu jedem Separationspaar {a, b} wird eine Chorde zwischen zwei Knoten **verschiedener Komponenten** von G−{a, b} auf einer gemeinsamen Fläche eingefügt; a und b selbst sind **nie** Endpunkte (ihr Grad wächst nicht). Die Auswahl ist gierig (minimales max(deg), dann minimale Gradsumme); die Einbettung wird über die Face-Corners fortgeschrieben, Hilfskanten erhalten `aug = true`. Die Einhaltung der Steigungsschranke wird nicht angenommen, sondern für jede Instanz vom Verifier nachgeprüft (Abschnitt 14).
 
 ## 12 Frei wählbarer Steigungsparameter k
 
@@ -315,14 +315,14 @@ Der Verifier prüft bei manuellem k diese Invariante anstelle der absoluten Schr
 
 ### 12.4 Exaktheit und Koordinaten-Guard
 
-Zwei Vorkehrungen sichern die Ganzzahl-Exaktheit, auf der die gesamte Verifikationsmethodik beruht (Abschnitte 6 und 13):
+Zwei Vorkehrungen sichern die Ganzzahl-Exaktheit, auf der die gesamte Verifikationsmethodik beruht (Abschnitte 6 und 14):
 
 - **BigInt-Arithmetik der Steigungsklassifikation.** Bei kleinem manuellem k können Koordinaten und insbesondere die Produkte k·|dx| des Zugehörigkeitstests „Steigung ∈ S" den exakt darstellbaren Bereich von JavaScript-`Number` (2⁵³) verlassen. Die Klassifikation wurde daher auf BigInt umgestellt; die Zuordnung eines Segments zu einer Steigung aus S bleibt damit für beliebige Koordinatengrößen exakt.
 - **Koordinaten-Guard.** Bei sehr kleinem k wächst die Breite pro Konstruktionsschritt etwa um den Faktor (1 + 2Δ/k). Ein Guard nach jedem Schritt (Schwelle 2⁴⁸) bricht sauber mit klarer Fehlermeldung ab, **bevor** ein Zwischenwert die exakte Ganzzahldarstellung verlassen könnte — ein einzelner Schritt aus einem noch gültigen Zustand bleibt nachweislich exakt. Ein andernfalls möglicher stiller Verlust der Exaktheit wird so in einen definierten, für die Nutzerin sichtbaren Fehlschlag überführt.
 
 ### 12.5 Verifikation und empirische Befunde
 
-Die vitest-Suite des TypeScript-Ports wurde um k-Läufe erweitert: k-Durchläufe über feste Familien (Ikosaeder, Prismen, Antiprismen, Räder, Gitter) und Zufallsgraphen, die jeweils den exakten 1-Knick-Verifier bestehen müssen; Grenzwert-, Ganzzahl- und Obergrenzenprüfung; die Eigenschaft „kleines k ⇒ geringere Höhe"; sowie eine Guard-Eigenschaft (das Ergebnis ist entweder verifiziert oder ein klarer Fehler, niemals eine unverifizierte Zeichnung oder ein Absturz). Insgesamt **180 Tests, null Fehlschläge**; die Produktionsbau-Prüfung bleibt fehlerfrei.
+Die vitest-Suite des TypeScript-Ports wurde um k-Läufe erweitert: k-Durchläufe über feste Familien (Ikosaeder, Prismen, Antiprismen, Räder, Gitter) und Zufallsgraphen, die jeweils den exakten 1-Knick-Verifier bestehen müssen; Grenzwert-, Ganzzahl- und Obergrenzenprüfung; die Eigenschaft „kleines k ⇒ geringere Höhe"; sowie eine Guard-Eigenschaft (das Ergebnis ist entweder verifiziert oder ein klarer Fehler, niemals eine unverifizierte Zeichnung oder ein Absturz). Sämtliche Tests bestehen; die Produktionsbau-Prüfung bleibt fehlerfrei (Gesamtzahlen in Abschnitt 14.3).
 
 Drei empirische Befunde sind bemerkenswert:
 
@@ -332,11 +332,29 @@ Drei empirische Befunde sind bemerkenswert:
 
 Ein Durchlauf im Browser bestätigt den Nutzen unmittelbar: Der Ikosaeder mit k = 10 besteht die Verifikation auf einem **44 × 115**-Gitter statt 44 × 25 945 und ist damit erstmals maßstabsgetreu (ohne y-Stauchung) lesbar; die Eingabe k = 2 liefert die parametrisierte Bereichsmeldung, in allen drei Oberflächensprachen (Deutsch, Englisch, Griechisch) übersetzt.
 
-## 13 Verifikation und Ergebnisse (Theorem 1)
+## 13 Erweiterung: wählbare Wurzelknoten der kanonischen Ordnung
+
+Eine zweite, kleinere Erweiterung der Webapp betrifft die **Wurzeln der kanonischen Ordnung**. Der Algorithmus aus Abschnitt 11.1 wählt sie automatisch: Er probiert alle Knoten minimalen Grades als v_n, deren inzidente Flächen und beide Umlaufrichtungen durch und übernimmt die **erste** vom Peeler und Checker akzeptierte Ordnung. Diese Wahl ist korrekt, aber willkürlich — derselbe Graph kann von vielen verschiedenen Startkonfigurationen aus gezeichnet werden. Beim Nachvollziehen der Abbildungen des Papers stört das: Die Implementierung startete etwa mit P₀ = {8, 0}, wo die Papier-Abbildung P₀ = {0, 1} verwendet. Die Webapp erlaubt daher, **v₁, v₂ und v_n einzeln vorzugeben** (leere Felder werden weiterhin automatisch gewählt).
+
+### 13.1 Semantik und Umsetzung
+
+Die Vorgaben ersetzen nicht die Konstruktion, sondern **filtern die bestehende Suche**: Ein erzwungenes v_n ersetzt den Minimalgrad-Filter der Kandidatenschleife; erzwungene v₁/v₂ schränken die Flächen- und Richtungskandidaten ein. Peeler und Checker bleiben unverändert — jede erzwungene Ordnung durchläuft dieselbe Validierung der Bedingungen (i)–(iv) wie eine automatische. Die Rollen sind asymmetrisch und werden nicht stillschweigend vertauscht: (v₁, v₂) und (v₁, v_n) müssen Kanten auf einer gemeinsamen Fläche sein (diese wird Außenfläche); v₁ liegt links und ist zu v_n adjazent. Wirkt eine Zeichnung gegenüber einer Vorlage gespiegelt, sind v₁ und v₂ zu tauschen.
+
+Bemerkenswert ist der Wegfall der Minimalgrad-Heuristik bei erzwungenem v_n: Zulässig ist jeder Knoten, für den eine Ordnung existiert — einschließlich Knoten **vollen Grades**, da der Zeichenkern den Sonderfall deg(v_n) = Δ_eff behandelt (Abschnitt 11.5). Ein dedizierter Test erzwingt die Nabe des Rades W₈ (Grad 8 = Δ_eff) als v_n und prüft, dass der Sonderfallpfad greift und die Zeichnung verifiziert.
+
+### 13.2 Gültigkeit und Fehlerbehandlung
+
+Wie beim Parameter k erfolgt die Validierung **nach der Augmentierung** — die Knotenindizes bleiben stabil, weil die Augmentierung nur Kanten hinzufügt, und die Vorgaben dürfen sich auch auf Hilfskanten stützen. Zwei parametrisierte Fehlerklassen werden gemeldet und in allen drei Oberflächensprachen übersetzt: formale Fehler (nicht ganzzahlig, außerhalb von 0…n−1, nicht paarweise verschieden) sowie die inhaltliche Ablehnung „keine kanonische Ordnung mit den vorgegebenen Wurzelknoten" (etwa wenn (v₁, v₂) keine Kante ist oder (v₁, v₂) und (v₁, v_n) auf keiner gemeinsamen Fläche liegen); Nicht-Kanten werden dabei vor der Suche erkannt und mit der konkreten Ursache benannt.
+
+### 13.3 Verifikation
+
+Die vitest-Suite wurde um neun Tests erweitert: volle und teilweise Vorgaben auf festen Familien (Ikosaeder, Rad-Nabe als v_n, Dreieck n = 3), Ablehnung von Nicht-Kanten sowie Bereichs-/Verschiedenheitsfehlern, Vorgaben auf dem Korollar-2-Pfad, die Eigenschaft, dass die Wurzeln einer automatisch gefundenen Ordnung — erneut erzwungen — dasselbe verifizierte Ergebnis liefern (feste Familien und Zufallsgraphen), und ein erschöpfender Durchlauf aller v_n-Wahlen auf dem Prisma (jedes Ergebnis ist verifiziert oder ein klarer Vorgabefehler, niemals eine unverifizierte Zeichnung). Ein Browser-Durchlauf bestätigt den Anwendungsfall: Das Rad W₈ mit v₁ = 0, v₂ = 1 startet mit P₀ = {0, 1} statt {8, 0} und besteht die Verifikation.
+
+## 14 Verifikation und Ergebnisse (Theorem 1)
 
 Wie in Teil I wird jede Papier-Spezifikation auf der fertigen Zeichnung unabhängig **nachgemessen**, statt sie der Konstruktion zu glauben.
 
-### 13.1 Geometrischer 1-Bend-Verifier
+### 14.1 Geometrischer 1-Bend-Verifier
 
 `verifyOneBendDrawing` (TS) bzw. `verify_onebend_drawing` (C++) prüfen auf exakten Ganzzahlkoordinaten (TS: BigInt, C++: `__int128`, keine Gleitkommatoleranzen):
 
@@ -347,13 +365,13 @@ Wie in Teil I wird jede Papier-Spezifikation auf der fertigen Zeichnung unabhän
 5. **Höhen-Invariante I.4:** jede Knoten-y-Koordinate ist ein Vielfaches von k.
 6. **Gitter und Fläche:** Ganzzahligkeit; Breite ≤ 12Δ_eff·N² und Höhe ≤ 18Δ_eff·N³ (N = max(n, 6)) bei Papier-k; bei manuellem k die Ersatzinvariante H ≤ n·(B+k) aus Abschnitt 12.3.
 
-### 13.2 Testkorpus und Mutationstest
+### 14.2 Testkorpus und Mutationstest
 
-Der C++-Treiber `onebend_test` erzeugt **297 Instanzen** pro Lauf: maximal-planare/triangulierte Graphen (direkt 3-zusammenhängend), zufällig 3-zusammenhängende, Räder, Prismen/Antiprismen, den **Ikosaeder** (deg(v_n) = Δ-Sonderfall) sowie nicht-3-zusammenhängende Eingaben (Bäume, Sterne, Spinnen, `random_planar_graph`) über den Korollar-2-Pfad. Der Ordnungs-Checker (Abschnitt 11.1) läuft über jede erzeugte Ordnung. Ein **Mutationsschalter** (`-m`) injiziert gezielte Fehler (Vorzeichen-/Portfehler); der Verifier muss anschlagen — das belegt seine Aussagekraft. Die TypeScript-Suite (vitest) spiegelt diesen Korpus als Property-Tests; sie umfasst insgesamt **180 Tests** (davon 87 im 1-Bend-Modul), einschließlich der k-Läufe aus Abschnitt 12.5.
+Der C++-Treiber `onebend_test` erzeugt **297 Instanzen** pro Lauf: maximal-planare/triangulierte Graphen (direkt 3-zusammenhängend), zufällig 3-zusammenhängende, Räder, Prismen/Antiprismen, den **Ikosaeder** (deg(v_n) = Δ-Sonderfall) sowie nicht-3-zusammenhängende Eingaben (Bäume, Sterne, Spinnen, `random_planar_graph`) über den Korollar-2-Pfad. Der Ordnungs-Checker (Abschnitt 11.1) läuft über jede erzeugte Ordnung. Ein **Mutationsschalter** (`-m`) injiziert gezielte Fehler (Vorzeichen-/Portfehler); der Verifier muss anschlagen — das belegt seine Aussagekraft. Die TypeScript-Suite (vitest) spiegelt diesen Korpus als Property-Tests; sie umfasst insgesamt **189 Tests** (davon 96 im 1-Bend-Modul), einschließlich der k-Läufe aus Abschnitt 12.5 und der Wurzelvorgaben-Tests aus Abschnitt 13.3.
 
-### 13.3 Ergebnisse
+### 14.3 Ergebnisse
 
-- **C++ `onebend_test`: 297/297 bestanden**, null Fehlschläge (inkl. strikter Steigungs- und Flächenschranken); **TypeScript-Suite: 180/180 bestanden**; der Produktionsbau (`npm run build`) bleibt fehlerfrei.
+- **C++ `onebend_test`: 297/297 bestanden**, null Fehlschläge (inkl. strikter Steigungs- und Flächenschranken); **TypeScript-Suite: 189/189 bestanden**; der Produktionsbau (`npm run build`) bleibt fehlerfrei.
 - **Ikosaeder** (5-regulär, Δ_eff = 5): korrekt gezeichnet inklusive des deg(v_n) = Δ-Sonderfalls (Abschnitt 11.5).
 - **Kreuzvalidierung:** identische Beispielgraphen liefern in C++ und TypeScript dieselben Steigungszahlen und denselben PASS-Status.
 
