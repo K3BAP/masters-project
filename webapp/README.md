@@ -30,6 +30,11 @@ die Webapp eigenständige **TypeScript-Ports** (`src/algorithm/`,
   durch 12Δn² beschränkten) Breite; der Verifier prüft stattdessen die
   k-parametrisierte Höheninvariante H ≤ n·(B+k). Ein Koordinaten-Guard bricht
   bei extremem Breitenwachstum sauber ab.
+- **Wurzeln v₁, v₂, vₙ (Theorem 1)**: die Wurzeln der kanonischen Ordnung
+  (P₀ = {v₁, v₂}, letzter Knoten vₙ) lassen sich einzeln vorgeben (leer =
+  automatisch), z. B. um eine Zeichnung mit einer Abbildung aus dem Paper zu
+  vergleichen. (v₁,v₂) und (v₁,vₙ) müssen Kanten auf einer gemeinsamen
+  Fläche sein; ungültige Vorgaben liefern eine klare Fehlermeldung.
 - **Grapheditor**: Knoten setzen, Kanten ziehen, verschieben, löschen — mit
   kontextabhängigen Cursorn und Hover-Feedback. Kreuzungsfreie Zeichnungen behalten
   ihre gezeichnete Einbettung (Rotationssystem aus der Geometrie). Zeichnungen mit

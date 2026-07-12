@@ -238,6 +238,7 @@ main {
   font-size: 13px;
 }
 .kparam-hint { flex: 1; min-width: 180px; }
+.kparam-value.roots-value input { width: 64px; }
 
 /* ---------------- Sonstiges ---------------- */
 .placeholder {

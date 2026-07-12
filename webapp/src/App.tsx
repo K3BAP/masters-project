@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { validateInput } from './algorithm/embedding';
 import { computeSlopesDrawing } from './algorithm/pipeline';
-import { computeOneBendDrawing } from './algorithm/onebend/pipeline';
+import { computeOneBendDrawing, type OneBendOptions } from './algorithm/onebend/pipeline';
 import type { OneBendResult } from './algorithm/onebend/types';
 import type { DrawingResult, InputGraph } from './algorithm/types';
 import { DrawingView } from './components/DrawingView';
@@ -32,6 +32,11 @@ export default function App() {
   // Theorem 1: Parameter k automatisch (4·Δ_eff·n², Papier-Wahl) oder manuell
   const [kAuto, setKAuto] = useState(true);
   const [kText, setKText] = useState('100');
+  // Theorem 1: Wurzeln der kanonischen Ordnung (leere Felder = automatisch)
+  const [rootsAuto, setRootsAuto] = useState(true);
+  const [v1Text, setV1Text] = useState('');
+  const [v2Text, setV2Text] = useState('');
+  const [vnText, setVnText] = useState('');
   // In der Ergebnisansicht angeklickter Knoten; wird auch im Editor markiert.
   const [selected, setSelected] = useState<number | null>(null);
 
@@ -50,7 +55,14 @@ export default function App() {
       setObResult(null);
       setStep(res.ok ? res.stats.n + 1 : 0); // n+1 = Schritt "Fertig"
     } else {
-      const res = computeOneBendDrawing(graph, kAuto ? undefined : { k: Number(kText) });
+      const opts: OneBendOptions = {};
+      if (!kAuto) opts.k = Number(kText);
+      if (!rootsAuto) {
+        if (v1Text.trim() !== '') opts.v1 = Number(v1Text);
+        if (v2Text.trim() !== '') opts.v2 = Number(v2Text);
+        if (vnText.trim() !== '') opts.vn = Number(vnText);
+      }
+      const res = computeOneBendDrawing(graph, Object.keys(opts).length ? opts : undefined);
       setObResult(res);
       setResult(null);
       setStep(res.ok ? res.snapshots.length + 1 : 0); // S+1 = "Fertig"
@@ -165,6 +177,40 @@ export default function App() {
                 </label>
               )}
               <span className="kparam-hint">{t('kparam_hint')}</span>
+            </div>
+          )}
+          {algo === 'onebend' && (
+            <div className="kparam">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={rootsAuto}
+                  onChange={(e) => { setRootsAuto(e.target.checked); if (obResult) setStale(true); }}
+                />
+                {t('roots_auto')}
+              </label>
+              {!rootsAuto && (
+                <>
+                  {([
+                    ['v₁', v1Text, setV1Text],
+                    ['v₂', v2Text, setV2Text],
+                    ['vₙ', vnText, setVnText],
+                  ] as Array<[string, string, (s: string) => void]>).map(([lbl, val, set]) => (
+                    <label className="kparam-value roots-value" key={lbl}>
+                      {lbl} =
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        placeholder={t('roots_auto_placeholder')}
+                        value={val}
+                        onChange={(e) => { set(e.target.value); if (obResult) setStale(true); }}
+                      />
+                    </label>
+                  ))}
+                </>
+              )}
+              <span className="kparam-hint">{t('roots_hint')}</span>
             </div>
           )}
           {activeError && (

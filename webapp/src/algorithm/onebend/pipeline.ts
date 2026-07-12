@@ -23,6 +23,17 @@ export interface OneBendOptions {
    * Ohne Angabe gilt die Papier-Wahl k = 4 * deltaEff * n^2 (Flaechenbeweis).
    */
   k?: number;
+  /**
+   * Optionale Wurzelvorgaben fuer die kanonische Ordnung (P_0 = {v1, v2},
+   * P_m = {vn}); jedes Feld einzeln, undefined = automatisch. (v1,v2) und
+   * (v1,vn) muessen Kanten auf einer gemeinsamen Flaeche sein -- Rollen
+   * asymmetrisch, kein automatisches Vertauschen. Die Indizes beziehen
+   * sich auf den Eingabegraphen (Augmentierung fuegt nur Kanten hinzu);
+   * die Trivialfaelle n <= 2 ignorieren die Vorgaben.
+   */
+  v1?: number;
+  v2?: number;
+  vn?: number;
 }
 
 /** Obergrenze fuer manuelles k (haelt alle Rechnungen im exakten Bereich). */
@@ -102,7 +113,15 @@ export function computeOneBendDrawing(
     k = kc;
   }
 
-  const co = computeCanonicalOrder(eg);
+  // Wurzelvorgaben: ganzzahlig, im Bereich, paarweise verschieden.
+  const roots = { v1: options?.v1, v2: options?.v2, vn: options?.vn };
+  const rootVals = [roots.v1, roots.v2, roots.vn].filter((x) => x !== undefined) as number[];
+  if (rootVals.some((x) => !Number.isInteger(x) || x < 0 || x >= eg.n) ||
+      new Set(rootVals).size !== rootVals.length) {
+    return failed(`Wurzelknoten muessen verschiedene ganze Zahlen zwischen 0 und ${eg.n - 1} sein.`);
+  }
+
+  const co = computeCanonicalOrder(eg, rootVals.length ? roots : undefined);
   if (!co.order) return failed('Kanonische Ordnung: ' + (co.error ?? 'unbekannt'));
   const order = co.order;
 

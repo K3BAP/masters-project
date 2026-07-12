@@ -330,6 +330,102 @@ describe('Manueller Parameter k', () => {
   });
 });
 
+describe('Wurzelvorgaben v1/v2/vn', () => {
+  it('volle Vorgabe auf dem Ikosaeder wird uebernommen', () => {
+    // (2,3,0) ist eine Dreiecksflaeche (u0, u1, top): (v1,v2) und (v1,vn)
+    // sind Kanten auf einer gemeinsamen Flaeche.
+    const res = computeOneBendDrawing(icosahedron(), { v1: 2, v2: 3, vn: 0 });
+    expect(res.ok, res.error ?? '').toBe(true);
+    expect(res.verified, res.report ?? '').toBe(true);
+    expect([res.v1, res.v2, res.vn]).toEqual([2, 3, 0]);
+    expect(res.stats.parts).toBeGreaterThan(1);
+  });
+
+  it('vn mit vollem Grad (Rad-Nabe) nutzt den Sonderfall', () => {
+    // W8: Nabe 8 hat deg = Delta_eff = 8; (0,1,8) ist eine Dreiecksflaeche.
+    const res = computeOneBendDrawing(wheel(8), { v1: 0, v2: 1, vn: 8 });
+    expect(res.ok, res.error ?? '').toBe(true);
+    expect(res.verified, res.report ?? '').toBe(true);
+    expect([res.v1, res.v2, res.vn]).toEqual([0, 1, 8]);
+    expect(res.stats.specialVn).toBe(true);
+  });
+
+  it('Teilvorgaben: nur v1+v2 bzw. nur vn', () => {
+    const a = computeOneBendDrawing(icosahedron(), { v1: 2, v2: 3 });
+    expect(a.ok, a.error ?? '').toBe(true);
+    expect(a.verified, a.report ?? '').toBe(true);
+    expect([a.v1, a.v2]).toEqual([2, 3]);
+
+    const b = computeOneBendDrawing(icosahedron(), { vn: 7 });
+    expect(b.ok, b.error ?? '').toBe(true);
+    expect(b.verified, b.report ?? '').toBe(true);
+    expect(b.vn).toBe(7);
+  });
+
+  it('n=3: Vorgaben auf dem Dreieck', () => {
+    const g = onCircle(3, [[0, 1], [1, 2], [2, 0]]);
+    const res = computeOneBendDrawing(g, { v1: 2, v2: 0 });
+    expect(res.ok, res.error ?? '').toBe(true);
+    expect(res.verified, res.report ?? '').toBe(true);
+    expect([res.v1, res.v2, res.vn]).toEqual([2, 0, 1]);
+  });
+
+  it('Nicht-Kante (v1,v2) wird mit klarer Meldung abgelehnt', () => {
+    // 2 und 4 (u0, u2) sind im Ikosaeder nicht adjazent.
+    const res = computeOneBendDrawing(icosahedron(), { v1: 2, v2: 4 });
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/vorgegebenen Wurzelknoten/);
+    expect(res.error).toMatch(/Kante \(v1,v2\) fehlt/);
+  });
+
+  it('validiert Bereich und Verschiedenheit', () => {
+    for (const roots of [
+      { v1: 99 }, { vn: -1 }, { v1: 1.5 }, { v1: NaN },
+      { v1: 3, vn: 3 }, { v1: 0, v2: 0 },
+    ]) {
+      const res = computeOneBendDrawing(icosahedron(), roots);
+      expect(res.ok, JSON.stringify(roots)).toBe(false);
+      expect(res.error).toMatch(/Wurzelknoten muessen verschiedene ganze Zahlen/);
+    }
+  });
+
+  it('Korollar-2-Pfad: automatische Wurzeln lassen sich reproduzieren', () => {
+    for (const [g, label] of [
+      [star(6), 'Stern 6'], [spider(3, 2), 'Spinne 3x2'], [grid(3, 3), 'Gitter 3x3'],
+    ] as Array<[InputGraph, string]>) {
+      const auto = computeOneBendDrawing(g);
+      expect(auto.ok, `${label}: ${auto.error ?? ''}`).toBe(true);
+      const forced = computeOneBendDrawing(g, { v1: auto.v1, v2: auto.v2, vn: auto.vn });
+      expect(forced.ok, `${label}: ${forced.error ?? ''}`).toBe(true);
+      expect(forced.verified, `${label}:\n${forced.report ?? ''}`).toBe(true);
+      expect([forced.v1, forced.v2, forced.vn]).toEqual([auto.v1, auto.v2, auto.vn]);
+    }
+  });
+
+  it('Property: Wurzeln der Auto-Ordnung erzwingen liefert PASS (Zufall)', () => {
+    for (let s = 1; s <= 6; s++) {
+      const g = randomPlanarGraph(10 + 3 * s, 1.6, 14000 + s);
+      const auto = computeOneBendDrawing(g);
+      expect(auto.ok, `Seed ${14000 + s}: ${auto.error ?? ''}`).toBe(true);
+      const forced = computeOneBendDrawing(g, { v1: auto.v1, v2: auto.v2, vn: auto.vn });
+      expect(forced.ok, `Seed ${14000 + s}: ${forced.error ?? ''}`).toBe(true);
+      expect(forced.verified, `Seed ${14000 + s}:\n${forced.report ?? ''}`).toBe(true);
+      expect([forced.v1, forced.v2, forced.vn]).toEqual([auto.v1, auto.v2, auto.vn]);
+    }
+  });
+
+  it('niemals eine unverifizierte Zeichnung: alle vn-Vorgaben auf dem Prisma', () => {
+    // Jede Wahl liefert entweder ein verifiziertes Ergebnis oder einen
+    // klaren Vorgabe-Fehler -- nie einen Absturz oder FAIL-Bericht.
+    const g = prism(5, false);
+    for (let vn = 0; vn < g.n; vn++) {
+      const res = computeOneBendDrawing(g, { vn });
+      if (res.ok) expect(res.verified, `vn=${vn}:\n${res.report ?? ''}`).toBe(true);
+      else expect(res.error, `vn=${vn}`).toMatch(/Wurzelknoten|Kanonische Ordnung/);
+    }
+  });
+});
+
 describe('Nicht-planare Eingaben', () => {
   it('K5 wird abgelehnt', () => {
     const edges: Array<[number, number]> = [];

@@ -157,6 +157,17 @@ const de = {
     'Die Zeichnung übersteigt den sicheren Koordinatenbereich – k ist für diesen Graphen ' +
     'zu klein (die Breite wächst pro Schritt etwa um den Faktor 1+2Δ/k).',
 
+  roots_auto: 'Wurzeln v₁, v₂, vₙ automatisch',
+  roots_auto_placeholder: 'auto',
+  roots_hint:
+    'Wurzeln der kanonischen Ordnung: P₀ = {v₁, v₂}, letzter Knoten vₙ. (v₁,v₂) und (v₁,vₙ) ' +
+    'müssen Kanten auf einer gemeinsamen Fläche sein (der Außenfläche). Leere Felder werden ' +
+    'automatisch gewählt.',
+  error_roots_invalid: 'Wurzelknoten müssen verschiedene ganze Zahlen zwischen 0 und {max} sein.',
+  error_roots_no_order:
+    'Keine kanonische Ordnung mit den vorgegebenen Wurzelknoten ({roots}) – (v₁,v₂) und (v₁,vₙ) ' +
+    'müssen Kanten auf einer gemeinsamen Fläche sein.',
+
   error_empty: 'Leerer Graph.',
   error_disconnected: 'Der Graph ist nicht zusammenhängend.',
   error_not_planar: 'Der Graph ist nicht planar.',
@@ -306,6 +317,16 @@ const en: Record<MsgKey, string> = {
     'The drawing exceeds the safe coordinate range – k is too small for this graph ' +
     '(the width grows by roughly a factor of 1+2Δ/k per step).',
 
+  roots_auto: 'automatic roots v₁, v₂, vₙ',
+  roots_auto_placeholder: 'auto',
+  roots_hint:
+    'Roots of the canonical ordering: P₀ = {v₁, v₂}, last vertex vₙ. (v₁,v₂) and (v₁,vₙ) ' +
+    'must be edges on a common face (the outer face). Empty fields are chosen automatically.',
+  error_roots_invalid: 'Root vertices must be distinct integers between 0 and {max}.',
+  error_roots_no_order:
+    'No canonical ordering with the prescribed root vertices ({roots}) – (v₁,v₂) and (v₁,vₙ) ' +
+    'must be edges on a common face.',
+
   error_empty: 'Empty graph.',
   error_disconnected: 'The graph is not connected.',
   error_not_planar: 'The graph is not planar.',
@@ -453,6 +474,16 @@ const el: Record<MsgKey, string> = {
     'Το σχέδιο υπερβαίνει το ασφαλές εύρος συντεταγμένων – το k είναι πολύ μικρό για αυτό ' +
     'το γράφημα (το πλάτος αυξάνεται περίπου κατά συντελεστή 1+2Δ/k ανά βήμα).',
 
+  roots_auto: 'αυτόματες ρίζες v₁, v₂, vₙ',
+  roots_auto_placeholder: 'αυτόμ.',
+  roots_hint:
+    'Ρίζες της κανονικής διάταξης: P₀ = {v₁, v₂}, τελευταία κορυφή vₙ. Οι (v₁,v₂) και (v₁,vₙ) ' +
+    'πρέπει να είναι ακμές σε κοινή όψη (την εξωτερική). Τα κενά πεδία επιλέγονται αυτόματα.',
+  error_roots_invalid: 'Οι ρίζες πρέπει να είναι διαφορετικοί ακέραιοι μεταξύ 0 και {max}.',
+  error_roots_no_order:
+    'Δεν υπάρχει κανονική διάταξη με τις δοσμένες ρίζες ({roots}) – οι (v₁,v₂) και (v₁,vₙ) ' +
+    'πρέπει να είναι ακμές σε κοινή όψη.',
+
   error_empty: 'Κενό γράφημα.',
   error_disconnected: 'Το γράφημα δεν είναι συνεκτικό.',
   error_not_planar: 'Το γράφημα δεν είναι επίπεδο.',
@@ -473,6 +504,12 @@ const PIPELINE_ERRORS: Array<[string, MsgKey]> = [
 
 // Parametrisierte Pipeline-Meldung: ungueltiges manuelles k (Theorem 1).
 const K_INVALID_RE = /^Parameter k muss eine ganze Zahl zwischen (\d+) und (\d+) sein\.$/;
+
+// Parametrisierte Pipeline-Meldungen: Wurzelvorgaben v1/v2/vn (Theorem 1).
+const ROOTS_INVALID_RE =
+  /^Wurzelknoten muessen verschiedene ganze Zahlen zwischen 0 und (\d+) sein\.$/;
+const ROOTS_NO_ORDER_RE =
+  /^Kanonische Ordnung: Keine kanonische Ordnung mit den vorgegebenen Wurzelknoten \(([^)]*)\)/;
 
 export function format(template: string, params?: Record<string, string | number>): string {
   if (!params) return template;
@@ -519,6 +556,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     if (hit) return t(hit[1]);
     const km = K_INVALID_RE.exec(msg);
     if (km) return t('error_k_invalid', { min: km[1], max: km[2] });
+    const rm = ROOTS_INVALID_RE.exec(msg);
+    if (rm) return t('error_roots_invalid', { max: rm[1] });
+    const rn = ROOTS_NO_ORDER_RE.exec(msg);
+    if (rn) return t('error_roots_no_order', { roots: rn[1] });
     return msg;
   };
 

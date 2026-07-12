@@ -25,6 +25,17 @@ export interface CanonicalOrder {
   vn: number;
 }
 
+/**
+ * Optionale Wurzelvorgaben (jedes Feld einzeln; undefined = automatisch).
+ * Rollen sind asymmetrisch: (v1,v2) und (v1,vn) muessen Kanten auf einer
+ * gemeinsamen Flaeche sein (der Aussenflaeche); vertauscht wird nicht.
+ */
+export interface CanonicalRoots {
+  v1?: number;
+  v2?: number;
+  vn?: number;
+}
+
 // ---------------------------------------------------------------------
 // Indexbasiertes Rotationssystem mit Alive-Maske
 // ---------------------------------------------------------------------
@@ -283,15 +294,30 @@ class Peeler {
 // ---------------------------------------------------------------------
 export function computeCanonicalOrder(
   eg: EmbeddedGraph,
+  roots?: CanonicalRoots,
 ): { order?: CanonicalOrder; error?: string } {
   const n = eg.n;
   if (n < 3) return { error: 'Kanonische Ordnung braucht n >= 3.' };
   const E0 = buildEmb(eg);
+  const forced = roots !== undefined &&
+    (roots.v1 !== undefined || roots.v2 !== undefined || roots.vn !== undefined);
+
+  // Frueh pruefbare Vorgabefehler klar melden (statt erfolgloser Suche).
+  if (roots?.v1 !== undefined && roots.v2 !== undefined && !adjacent(E0, roots.v1, roots.v2))
+    return { error: rootsError(roots, 'Kante (v1,v2) fehlt.') };
+  if (roots?.v1 !== undefined && roots.vn !== undefined && !adjacent(E0, roots.v1, roots.vn))
+    return { error: rootsError(roots, 'Kante (v1,vn) fehlt.') };
 
   if (n === 3) {
-    const order: CanonicalOrder = { parts: [[0, 1], [2]], v1: 0, v2: 1, vn: 2 };
+    // Freie Rollen mit den uebrigen Indizes fuellen (Reihenfolge 0,1,2).
+    const taken = new Set([roots?.v1, roots?.v2, roots?.vn].filter((x) => x !== undefined));
+    const free = [0, 1, 2].filter((x) => !taken.has(x));
+    const v1 = roots?.v1 ?? free.shift()!;
+    const v2 = roots?.v2 ?? free.shift()!;
+    const vn = roots?.vn ?? free.shift()!;
+    const order: CanonicalOrder = { parts: [[v1, v2], [vn]], v1, v2, vn };
     const err = checkCanonicalOrder(eg, order);
-    return err ? { error: err } : { order };
+    return err ? { error: forced ? rootsError(roots!, err) : err } : { order };
   }
 
   let mind = Infinity;
@@ -299,7 +325,9 @@ export function computeCanonicalOrder(
 
   let lastError = '';
   for (let u = 0; u < n; u++) {
-    if (E0.rot[u].length !== mind) continue;
+    // Erzwungenes vn ersetzt den Min-Grad-Filter (deg(vn) = Delta_eff wird
+    // vom Zeichenkern als Sonderfall behandelt).
+    if (roots?.vn !== undefined ? u !== roots.vn : E0.rot[u].length !== mind) continue;
     for (const x of E0.rot[u]) {
       const F = faceWalk(E0, u, x);
       if (!F || F.length < 3) continue;
@@ -310,6 +338,8 @@ export function computeCanonicalOrder(
         const aOut = dir === 0 ? v1 : v2;
         const bOut = dir === 0 ? v2 : v1;
         if (v1 === u || v2 === u || v1 === v2) continue;
+        if (roots?.v1 !== undefined && v1 !== roots.v1) continue;
+        if (roots?.v2 !== undefined && v2 !== roots.v2) continue;
         const P = new Peeler(E0, v1, v2, u, aOut, bOut);
         if (!P.run()) { if (!lastError) lastError = P.error; continue; }
         const parts: number[][] = [[v1, v2]];
@@ -321,7 +351,21 @@ export function computeCanonicalOrder(
       }
     }
   }
+  if (forced) return { error: rootsError(roots!, lastError) };
   return { error: lastError || 'Keine kanonische Ordnung gefunden.' };
+}
+
+/**
+ * Fehlermeldung fuer erfolglose Wurzelvorgaben. Fester Praefix (fuer die
+ * i18n-Uebersetzung), Details des letzten Fehlschlags angehaengt.
+ */
+function rootsError(roots: CanonicalRoots, detail: string): string {
+  const parts: string[] = [];
+  if (roots.v1 !== undefined) parts.push(`v1=${roots.v1}`);
+  if (roots.v2 !== undefined) parts.push(`v2=${roots.v2}`);
+  if (roots.vn !== undefined) parts.push(`vn=${roots.vn}`);
+  return `Keine kanonische Ordnung mit den vorgegebenen Wurzelknoten (${parts.join(', ')})` +
+    (detail ? ` -- ${detail}` : '');
 }
 
 // ---------------------------------------------------------------------
