@@ -1,18 +1,25 @@
-# Implementierungsbericht: 2-Bend-planare Zeichnungen mit ⌈Δ/2⌉ Steigungen
+# Implementierungsbericht: Planare Gitterzeichnungen mit wenigen Steigungen
 
-**Implementierung von Theorem 4 und Korollar 5 aus Bekos, Katsanou, Kindermann, Pavlidi: „How Many Slopes Does Polynomial Area Cost?" (arXiv:2605.31098) auf Basis von LEDA/GraphWin**
+**Implementierung zweier Algorithmen aus Bekos, Katsanou, Kindermann, Pavlidi: „How Many Slopes Does Polynomial Area Cost?" (arXiv:2605.31098):**
 
-Stand: 2. Juli 2026
+- **Teil I** — *Theorem 4 + Korollar 5*: 2-Bend-planare Zeichnungen mit ⌈Δ/2⌉ Steigungen (LEDA/GraphWin).
+- **Teil II** — *Theorem 1 + Korollar 2*: 1-Bend-planare Zeichnungen mit 3Δ−8 Steigungen (LEDA/GraphWin-Referenz **und** eigenständiger TypeScript-Port in der Webanwendung), einschließlich des frei wählbaren Steigungsparameters k.
+
+Stand: 12. Juli 2026 (Teil II ergänzt; Umstrukturierung in zwei Teile)
 
 ---
 
 ## Zusammenfassung
 
-Dieser Bericht dokumentiert die Implementierung des Zeichenalgorithmus aus Abschnitt 4 des oben genannten Papers: Jeder bikonnektierte planare Graph mit Maximalgrad Δ ≥ 3 erhält eine planare Gitterzeichnung mit höchstens **zwei Knicken pro Kante** und höchstens **⌈Δ/2⌉ Steigungen** auf einem Gitter der Größe **O(n) × O(Δn²)**; nicht-bikonnektierte planare Graphen benötigen nach Augmentierung höchstens eine zusätzliche Steigung (Korollar 5). Der Algorithmus ist die direkte Verallgemeinerung des Biedl-Kant-Algorithmus (Δ ≤ 4, zwei Steigungen), dessen Implementierung in diesem Repository (`biedl_kant.cpp`) als strukturelle Vorlage diente.
+Dieser Bericht dokumentiert die Implementierung **beider** Hauptalgorithmen des oben genannten Papers und ist entsprechend in zwei Teile gegliedert.
 
-Die Implementierung wurde gegen die Spezifikationen des Papers mit einem exakt rechnenden geometrischen Verifier und einem randomisierten Stresstest über **ca. 8 400 Testinstanzen** validiert (null Fehlschläge); die Aussagekraft des Verifiers selbst wurde durch einen Mutationstest belegt. Zwei wohlbegründete Abweichungen von der Papierkonstruktion waren notwendig, weil LEDA-Primitive (`ST_NUMBERING`, `Make_Biconnected`) die vom Paper vorausgesetzten Eigenschaften nicht liefern; beide Abweichungen sind theoretisch fundiert und ändern keine der bewiesenen Schranken (Abschnitt 5).
+**Teil I (Theorem 4 + Korollar 5, Abschnitte 1–8).** Jeder bikonnektierte planare Graph mit Maximalgrad Δ ≥ 3 erhält eine planare Gitterzeichnung mit höchstens **zwei Knicken pro Kante** und höchstens **⌈Δ/2⌉ Steigungen** auf einem Gitter der Größe **O(n) × O(Δn²)**; nicht-bikonnektierte planare Graphen benötigen nach Augmentierung höchstens eine zusätzliche Steigung (Korollar 5). Der Algorithmus ist die direkte Verallgemeinerung des Biedl-Kant-Algorithmus (Δ ≤ 4, zwei Steigungen), dessen Implementierung in diesem Repository (`biedl_kant.cpp`) als strukturelle Vorlage diente. Die Umsetzung wurde gegen die Spezifikationen mit einem exakt rechnenden geometrischen Verifier und einem randomisierten Stresstest über **ca. 8 400 Testinstanzen** validiert (null Fehlschläge); die Aussagekraft des Verifiers selbst wurde durch einen Mutationstest belegt. Zwei wohlbegründete Abweichungen von der Papierkonstruktion waren notwendig, weil LEDA-Primitive (`ST_NUMBERING`, `Make_Biconnected`) die vorausgesetzten Eigenschaften nicht liefern; beide sind theoretisch fundiert und ändern keine der bewiesenen Schranken (Abschnitt 5).
+
+**Teil II (Theorem 1 + Korollar 2, Abschnitte 9–13).** Jeder **3-fach zusammenhängende** planare Graph mit Δ ≥ 5 erhält eine planare Gitterzeichnung mit höchstens **einem Knick pro Kante** und höchstens **3Δ−8 Steigungen**; beliebige planare Graphen folgen über eine gradbeschränkte Augmentierung zu 3-Zusammenhang (Korollar 2, ⌈9Δ/2⌉+1 Steigungen). Anders als Theorem 4 lässt sich hier die Geometrie **nicht** aufschieben: Der Algorithmus arbeitet mit expliziter kanonischer Ordnung, einer Schnyder-artigen 4-Kantenfärbung und einer **Cut-basierten horizontalen Streckung**. Teil II besteht aus einer LEDA/GraphWin-Referenzimplementierung (`onebend_core.cpp`, `canonical_order.cpp`, `planar_aug.cpp`) **und** einem eigenständigen, ebenfalls verifizierten **TypeScript-Port** in der begleitenden Webanwendung. Beide wurden über einen exakten 1-Bend-Verifier stressgetestet (C++ `onebend_test`: **297 Instanzen**, TypeScript-Suite: **180 Tests**, je null Fehlschläge). Als bewusste Erweiterung gegenüber der Papierkonstruktion ist der zentrale Geometrieparameter **k** in der Webapp frei wählbar (Abschnitt 12); die Papier-Wahl k = 4Δn² wird nur für den Flächenbeweis benötigt, nicht für die Korrektheit.
 
 ---
+
+# Teil I — Theorem 4 + Korollar 5: 2 Knicke, ⌈Δ/2⌉ Steigungen
 
 ## 1 Einleitung und Zielsetzung
 
@@ -208,11 +215,156 @@ Fehlschlagende Instanzen werden als `slopes_fail_NNN.gw` gespeichert und sind da
 - **Gradschranke der Augmentierung:** Die gierige Bypass-Auswahl garantiert die Kant-Bodlaender-Schranke Δ_aug ≤ Δ+2 nicht formal in allen Fällen; sie wird jedoch für jede Instanz durch die strikte Steigungsprüfung des Verifiers erzwungen und wurde in ~8 400 Fällen nie verletzt. Eine formal beweisende Umsetzung von [KB92] wäre eine mögliche Erweiterung.
 - **4-reguläre Nicht-Oktaeder-Graphen** erhalten 3 statt 2 Steigungen (Abschnitt 5.3); der orthogonale Fall wird von der bestehenden `biedl_kant`-Anwendung abgedeckt, das Paper delegiert diesen Fall ebenfalls.
 
+# Teil II — Theorem 1 + Korollar 2: 1 Knick, 3Δ−8 Steigungen
+
+Neben Theorem 4 implementiert dieses Projekt den zweiten Hauptalgorithmus des Papers (Abschnitt 3.1): **Theorem 1** zeichnet jeden 3-fach zusammenhängenden planaren Graphen mit Δ ≥ 5 mit höchstens **einem Knick pro Kante** und höchstens **3Δ−8 Steigungen** auf einem 12Δn² × 18Δn³-Gitter; **Korollar 2** überträgt das Ergebnis über eine gradbeschränkte Augmentierung zu 3-Zusammenhang (Kant-Bodlaender-Stil, Δ' ≤ ⌈3Δ/2⌉+3) auf beliebige planare Graphen mit ⌈9Δ/2⌉+1 Steigungen. Teil II umfasst eine LEDA/GraphWin-Referenzimplementierung und einen eigenständigen TypeScript-Port in der Webanwendung; wo sich beide unterscheiden, ist es vermerkt.
+
+## 9 Zeichnungsmodell und Grundlagen (Theorem 1)
+
+### 9.1 Kanten-, Steigungs- und Gittermodell
+
+Jede Kante erhält höchstens **einen** Knick und besteht damit aus höchstens zwei Segmenten. Die zulässige Steigungsmenge ist rational und durch einen ganzzahligen Parameter **k** und die Größe D₃ = Δ_eff−3 gesteuert (Δ_eff = max(Δ', 5)):
+
+> S = { ∞ (vertikal) } ∪ { 0 (horizontal) } ∪ { ±k/j : j = 1…D₃ } (steil) ∪ { j/D₃ : j = 1…D₃−1 } (flach),   |S| = 3Δ_eff−8.
+
+Die steilen Steigungen haben Betrag > 1, die flachen Betrag < 1; diese Trennung entlang des Betrags 1 nutzt der Verifier zur Klassifikation. Der Parameter **k** ist der vertikale Zeilenabstand: Invariante I.4 verlangt, dass alle Knoten-y-Koordinaten Vielfache von k sind. Das Paper wählt k = 4·Δ_eff·n² (nur für den Flächenbeweis); die Webapp erlaubt zusätzlich ein frei gewähltes k (Abschnitt 12).
+
+### 9.2 Kanonische Ordnung statt st-Nummerierung
+
+Theorem 1 konstruiert entlang einer **kanonischen Ordnung** Π = (P₀, …, P_m) des 3-zusammenhängenden ebenen Graphen: P₀ = {v₁, v₂}, P_m = {v_n}, mit (v₁, v₂) und (v₁, v_n) als Außenkanten; jedes P_i ist ein einzelner Knoten (*Singleton*) oder eine *Kette* konsekutiver Konturknoten. Die Konturkanten tragen eine **Schnyder-artige 4-Kantenfärbung** (schwarz/blau/grün/rot), aus der die Kantenformen (Invariante I.5) folgen.
+
+### 9.3 Wesentlicher Unterschied zu Theorem 4
+
+Bei Theorem 4 ließ sich die Geometrie vollständig aufschieben (Abschnitt 4.1). Das ist hier **nicht** möglich: Die Platzierung eines neuen Knotens liest die aktuelle Höhe H(Γ) und die Knickpositionen der Kontur. Stattdessen wird explizite Geometrie geführt und die vom Paper geforderte Streckbarkeit über eine **Cut-basierte horizontale Streckung** operationalisiert (Abschnitt 11.4), die ausschließlich horizontale Segmente streckt und damit alle Steigungen exakt erhält.
+
+## 10 Architektur (Theorem 1)
+
+| Datei | Inhalt |
+|---|---|
+| `planar_aug.{h,cpp}` | Flächen-Traversierung auf LEDA-Maps; gradbeschränkte Bikonnektivitäts- **und** Trikonnektivitäts-Augmentierung über Flächen-Chorden (Korollar 2). Wird auch vom refaktorierten Theorem-4-Kern mitbenutzt (ersetzt dessen frühere Bypass-Variante) |
+| `canonical_order.{h,cpp}` | kanonische Ordnung per Reverse Peeling + unabhängiger Ordnungs-Checker |
+| `onebend_core.{h,cpp}` | Pipeline (Gates → Augmentierung → Einbettung/Außenfläche → kanonische Ordnung → Färbung → Zeichnen → Wiedereinsetzungen) und geometrischer 1-Bend-Verifier |
+| `onebend_test.cpp` | Headless-Stresstest (297 Instanzen, Mutationsschalter `-m`) |
+| `onebend_slopes.cpp` | interaktive GraphWin-Anwendung (analog `biedl_kant_slopes`) |
+
+Der **TypeScript-Port** liegt in `webapp/src/algorithm/onebend/` und spiegelt diese Struktur: `canonicalOrder.ts`, `augmentTriconnected.ts`, `drawing.ts`, `verifier.ts`, `types.ts`, `pipeline.ts`. Er verwendet aus dem Theorem-4-Modul die vorhandenen Bausteine `validateInput`, `buildEmbedding`, die Demoucron-Planarisierung `planarEmbedding` (Pendant zu LEDA `PLANAR(G, true)`), `augmentBiconnected` sowie die Flächen-Traversierung `traverseFaces` wieder. Da LEDA proprietär ist, ist der Port kein Wrapper, sondern eine eigenständige Implementierung mit **eigenem, exakt rechnendem Verifier** (BigInt statt `__int128`).
+
+## 11 Algorithmische Umsetzung
+
+### 11.1 Kanonische Ordnung per Reverse Peeling
+
+Die Ordnung wird durch **rückwärtiges Abschälen** vom aktuellen Außenzyklus C gewonnen (`computeCanonicalOrder` / `compute_canonical_order`). Wiederholt wird entweder ein **Singleton** z ∈ C∖{v₁, v₂} ohne Sehne, dessen Entfernung Bikonnektivität erhält, oder eine **Kette** aus konsekutiven C-Knoten mit Grad genau 2 entfernt; Stopp, sobald der Rest der Zyklus durch (v₁, v₂) ist (⇒ P₁). Der Schälschritt validiert die Bedingungen (i)–(iv) direkt:
+
+- **(i)** G_i bikonnektiert und **intern 3-zusammenhängend** — Letzteres über einen **Apex-Trick** (temporärer, mit allen Konturknoten verbundener Zusatzknoten; ist der so erweiterte Graph 3-zusammenhängend, ist G_i intern 3-zusammenhängend);
+- **(ii)** alle Nachbarn von P_i liegen auf C_{i−1};
+- **(iii)** P_i ist Singleton oder Grad-2-Kette;
+- **(iv)** jeder Knoten von P_i hat einen späteren Nachbarn.
+
+Nach Kants Existenzlemma [Kant96] bleibt der Greedy dadurch nie stecken. Ein **unabhängiger Ordnungs-Checker** (`checkCanonicalOrder` / C++-Pendant) prüft eine fertige Ordnung nachträglich gegen (i)–(iv) und dient in den Tests als Referee — dieselbe „nachmessen statt vertrauen"-Methodik wie in Teil I.
+
+### 11.2 Schnyder-artige 4-Kantenfärbung
+
+Jede Kante erhält eine von vier Farben, aus denen die zulässige Form folgt (I.5): **schwarz** = ein horizontales Segment; **blau** = (vertikal oder rechts-steil) + horizontal; **grün** = (vertikal oder links-steil) + horizontal; **rot** = einzeln vertikal oder vertikal + flach. Die Basiskante (v₁, v₂) trägt die Sonderform *vertikal an v₁ + flach 1/D₃ an v₂*. Die Färbung ergibt sich pro Schritt aus der ersten/letzten neuen Konturkante (blau/grün), den Ketten-Innenkanten (schwarz) und den übrigen Singleton-Kanten (rot).
+
+### 11.3 Inkrementelle Zeichnung: Fälle 1 und 2
+
+`drawOneBend` (Klasse `Draw`, Port des `Draw`-Kerns aus `onebend_core.cpp`) platziert v₁, P₁, v₂ auf einer Basiszeile (Kante (v₁, v₂) vorher entfernt) und fügt dann Π schrittweise hinzu:
+
+- **Fall 1 (`case1`) — Kette oder Grad-2-Singleton:** An den Kontur-Nachbarn v_ℓ, v_r werden freie Ports vergeben (rechts-steil bzw. links-steil, gegen den Uhrzeigersinn); die neue Zeile liegt bei y = H(Γ)+k, das Ketteninnere horizontal. Die Konturkanten (v_ℓ, v_ℓ′), (v_r, v_r′) werden gestreckt, bis die Knicke frei auf Gitterpunkten liegen.
+- **Fall 2 (`case2`) — Singleton mit Grad > 2:** Der Knoten v_g bekommt eine vertikale rote Kante zu w_q; die Kanten (w_j, v_g) für j < q erhalten ein vertikales plus ein flaches Segment j/D₃, wobei (w_j, w_j′) so gestreckt wird, dass der Horizontalabstand ≡ 0 (mod D₃) ist; y(v_g) ist das kleinste Vielfache von k oberhalb aller Knick-Schranken. Die Randkanten (v_ℓ, v_g), (v_g, v_r) verhalten sich wie in Fall 1.
+
+Weil Zeilen Vielfache von k sind, liegen die Knicke steiler Segmente (dx = dy·j/k) auf Gitterpunkten; flache Distanzen sind Vielfache von D₃. Ein **Koordinaten-Guard** (`coordGuard`, Schwelle 2⁴⁸) sichert nach jedem Schritt die Ganzzahl-Exaktheit ab (Abschnitt 12.4). Für die Schrittansicht der Webapp erzeugt `snapshot` vollständige Zwischenstände, da die Streckungen auch bereits platzierte Teile verschieben.
+
+### 11.4 Cut-Streckung
+
+Die Paper-Operation „Cut" (eine y-monotone Kurve, die nur horizontale Segmente kreuzt) ist als Abschlussregel implementiert (`stretch`): **R = Abschluss des rechten Endpunkts des horizontalen Segments der Konturkante e unter (a) nicht-horizontalen Segmenten (beide Richtungen, starr) und (b) horizontalen Segmenten in Richtung ihres rechten Endpunkts.** Alle Punkte (Knoten und Knicke) in R wandern um +d; ausschließlich horizontale Segmente ändern dabei ihre Länge, sodass **alle Steigungen exakt erhalten** bleiben. Auf kleinen Instanzen läuft der Verifier nach jeder Streckung (Debug-Pfad), was die Abschlussregel während der Entwicklung abgesichert hat.
+
+### 11.5 Sonderfall deg(v_n) = Δ_eff
+
+Hat die Senke v_n vollen Grad, kann die rechteste Kante (w_Δ, v_n) nicht regulär geführt werden. Die Konstruktion schiebt sie auf (`prepareReinserts`, `reinsertSpecial`): Vor dem Zeichnen der Sonderkante laufen alle mod-D₃-Ausrichtungsstreckungen; die Kante (w_{Δ−1}, v_n) wird grün umgefärbt, und (w_Δ, v_n) wird am Ende mit vertikalem Segment an w_Δ und flachem an v_n eingesetzt. Analog setzt `reinsertBase` die Basiskante (v₁, v₂) am Schluss unterhalb wieder ein. Dieser Fall tritt u. a. beim **Ikosaeder** (5-regulär, Δ_eff = 5) auf und ist ein eigener Testfall.
+
+### 11.6 Korollar 2: gradbeschränkte Trikonnektivierung
+
+Die Augmentierungskette ist zusammenhängend → bikonnektiert → **3-zusammenhängend**. Den letzten Schritt leisten `augment_triconnected_bounded` (C++, LEDA `Is_Triconnected` liefert die Separationspaare) bzw. `augmentTriconnected` (TS). Der TS-Port ermittelt Separationspaare per **Brute Force** (`separationPair`: für jeden Knoten x wird ein Artikulationspunkt von G−x gesucht — n ist klein). Zu jedem Separationspaar {a, b} wird eine Chorde zwischen zwei Knoten **verschiedener Komponenten** von G−{a, b} auf einer gemeinsamen Fläche eingefügt; a und b selbst sind **nie** Endpunkte (ihr Grad wächst nicht). Die Auswahl ist gierig (minimales max(deg), dann minimale Gradsumme); die Einbettung wird über die Face-Corners fortgeschrieben, Hilfskanten erhalten `aug = true`. Die Einhaltung der Steigungsschranke wird nicht angenommen, sondern für jede Instanz vom Verifier nachgeprüft (Abschnitt 13).
+
+## 12 Frei wählbarer Steigungsparameter k
+
+Der Parameter k aus Abschnitt 9.1 ist in der Webapp frei wählbar. Diese Funktion ist eine **bewusste, nicht-triviale Abweichung von der Papierkonstruktion** und wird hier gesondert dokumentiert.
+
+### 12.1 Rolle von k und Motivation
+
+In Theorem 1 parametrisiert k die Steigungsmenge S: die steilen Steigungen sind **±k/j** (j = 1, …, Δ_eff−3), und Invariante I.4 verlangt, dass alle Knoten-y-Koordinaten Vielfache von k sind — jede neue Konturzeile liegt also mindestens k über der vorhergehenden. Das Paper setzt
+
+> k = 4·Δ_eff·n²
+
+fest. Dieser Wert wird jedoch **ausschließlich für den Flächenbeweis** benötigt: Die Breiten-Rekursion (Gleichungen (1), (3), (5) des Papers) konvergiert genau dann zur Schranke O(Δn²), wenn k hinreichend groß ist. Für die **Korrektheit** der Konstruktion — Planarität, höchstens ein Knick, Steigungen aus S, sämtliche Invarianten I.1–I.5 — ist die konkrete Größe von k dagegen nahezu bedeutungslos.
+
+Praktisch ist die Papier-Wahl astronomisch groß: Für den Ikosaeder (Δ_eff = 5, n = 12) ergibt sich k = 2880 und eine Zeichnung auf 44 × 25 945. Die steilen Segmente ±k/j erscheinen dann faktisch senkrecht; erst die anisotrope y-Stauchung der Ergebnisansicht macht sie erkennbar. Ein kleines k (etwa 10) liefert dieselbe, ebenso korrekte Konstruktion auf einem drastisch flacheren Gitter, in dem die Steigungen k/1, k/2, … als echte Schrägen sichtbar werden. Die Funktion dient damit zwei Zwecken: der **maßstabsgetreuen Darstellbarkeit** kleiner Instanzen und der **empirischen Untersuchung** der Frage, wie klein k werden darf, bevor die Fläche unhandlich wächst — also der experimentellen Beleuchtung der Papier-Wahl 4Δn².
+
+### 12.2 Gültigkeitsbereich
+
+k muss eine **ganze Zahl mit k ≥ Δ_eff−2** sein. Bei k ≤ Δ_eff−3 kollidierten die steilen Steigungen k/j (deren Betrag > 1 sein muss) mit den flachen Steigungen j/(Δ_eff−3) (Betrag < 1); S besäße dann weniger als 3Δ−8 verschiedene Elemente, und die Unterscheidung steil/flach des Verifiers (Betrag ≷ 1) klassifizierte falsch. Da Δ_eff erst **nach** der Trikonnektivitäts-Augmentierung (Korollar 2) feststeht, erfolgt die Prüfung in der Pipeline, nicht in der Oberfläche. Nach oben wird k auf 10⁹ begrenzt, damit alle ganzzahligen Rechnungen im exakt darstellbaren Bereich bleiben (Abschnitt 12.4).
+
+### 12.3 Abweichung von den Papierschranken und Ersatzinvariante
+
+Der einzige Teil des Verifiers, der wirklich an der Standardwahl von k hängt, ist die **Flächenprüfung**. Bei manuellem k gilt die absolute Breitenschranke 12Δn² nicht mehr — für kleines k wächst die Breite bewusst darüber hinaus. Die Prüfung wird daher umgestellt auf die **k-parametrisierte Höheninvariante**, die für *jedes* gültige k gilt: Aus den Gleichungen (2)/(4) des Papers hebt jeder Schritt die Höhe um höchstens W + k, und es gibt höchstens n Schritte, also
+
+> H ≤ n·(W + k).
+
+Der Verifier prüft bei manuellem k diese Invariante anstelle der absoluten Schranken; die Breite bleibt ohne feste Obergrenze (der Koordinaten-Guard aus 12.4 fängt unkontrolliertes Wachstum ab). Der Verifikationsbericht kennzeichnet die Abweichung explizit („k manuell; Papier-Flächenschranke entfällt"), sodass sie nicht stillschweigend geschieht.
+
+### 12.4 Exaktheit und Koordinaten-Guard
+
+Zwei Vorkehrungen sichern die Ganzzahl-Exaktheit, auf der die gesamte Verifikationsmethodik beruht (Abschnitte 6 und 13):
+
+- **BigInt-Arithmetik der Steigungsklassifikation.** Bei kleinem manuellem k können Koordinaten und insbesondere die Produkte k·|dx| des Zugehörigkeitstests „Steigung ∈ S" den exakt darstellbaren Bereich von JavaScript-`Number` (2⁵³) verlassen. Die Klassifikation wurde daher auf BigInt umgestellt; die Zuordnung eines Segments zu einer Steigung aus S bleibt damit für beliebige Koordinatengrößen exakt.
+- **Koordinaten-Guard.** Bei sehr kleinem k wächst die Breite pro Konstruktionsschritt etwa um den Faktor (1 + 2Δ/k). Ein Guard nach jedem Schritt (Schwelle 2⁴⁸) bricht sauber mit klarer Fehlermeldung ab, **bevor** ein Zwischenwert die exakte Ganzzahldarstellung verlassen könnte — ein einzelner Schritt aus einem noch gültigen Zustand bleibt nachweislich exakt. Ein andernfalls möglicher stiller Verlust der Exaktheit wird so in einen definierten, für die Nutzerin sichtbaren Fehlschlag überführt.
+
+### 12.5 Verifikation und empirische Befunde
+
+Die vitest-Suite des TypeScript-Ports wurde um k-Läufe erweitert: k-Durchläufe über feste Familien (Ikosaeder, Prismen, Antiprismen, Räder, Gitter) und Zufallsgraphen, die jeweils den exakten 1-Knick-Verifier bestehen müssen; Grenzwert-, Ganzzahl- und Obergrenzenprüfung; die Eigenschaft „kleines k ⇒ geringere Höhe"; sowie eine Guard-Eigenschaft (das Ergebnis ist entweder verifiziert oder ein klarer Fehler, niemals eine unverifizierte Zeichnung oder ein Absturz). Insgesamt **180 Tests, null Fehlschläge**; die Produktionsbau-Prüfung bleibt fehlerfrei.
+
+Drei empirische Befunde sind bemerkenswert:
+
+- Die Konstruktion verifiziert selbst am **theoretischen Minimum** k = Δ_eff−2 (= 3 beim Ikosaeder).
+- Die **Höhe skaliert im Wesentlichen linear in k** bei nahezu konstanter Breite (Ikosaeder-Durchlauf: k = 10 → Höhe 115, k = 50 → 1 129, k = 500 → 10 579, k = 50 000 → 1 050 079). Das bestätigt, dass k — wie beabsichtigt — Höhe gegen Lesbarkeit eintauscht.
+- Das **Breitenwachstum bleibt auch bei nahezu minimalem k weit unter dem Worst Case** (n = 96, k = 14: Breite ≈ 60 000, keine Explosion). Die Papier-Wahl 4Δn² ist somit für das *Beweisen* der Flächenschranke nötig, praktisch aber sehr konservativ.
+
+Ein Durchlauf im Browser bestätigt den Nutzen unmittelbar: Der Ikosaeder mit k = 10 besteht die Verifikation auf einem **44 × 115**-Gitter statt 44 × 25 945 und ist damit erstmals maßstabsgetreu (ohne y-Stauchung) lesbar; die Eingabe k = 2 liefert die parametrisierte Bereichsmeldung, in allen drei Oberflächensprachen (Deutsch, Englisch, Griechisch) übersetzt.
+
+## 13 Verifikation und Ergebnisse (Theorem 1)
+
+Wie in Teil I wird jede Papier-Spezifikation auf der fertigen Zeichnung unabhängig **nachgemessen**, statt sie der Konstruktion zu glauben.
+
+### 13.1 Geometrischer 1-Bend-Verifier
+
+`verifyOneBendDrawing` (TS) bzw. `verify_onebend_drawing` (C++) prüfen auf exakten Ganzzahlkoordinaten (TS: BigInt, C++: `__int128`, keine Gleitkommatoleranzen):
+
+1. **Planarität:** paarweise Segment-Schnitttests; erlaubt sind nur Berührungen in gemeinsamen Endknoten bzw. am gemeinsamen Knick derselben Kante; kollineare Überlappungen und Knoten im Inneren fremder Segmente sind Fehler.
+2. **Knickzahl:** höchstens **ein** Knick pro Kante (nach Entfernung degenerierter Punkte).
+3. **Steigungen (exakt, rational):** jedes Segment ist vertikal, horizontal, steil (|dy|·j = k·|dx| für ein j ∈ 1…D₃) oder flach (|dy|·D₃ = j·|dx|, Steigung > 0, j ∈ 1…D₃−1). Die Zahl **verschiedener** Steigungen wird gegen die **strikte** Schranke gemessen — 3·max(Δ, 5)−8 für 3-zusammenhängende Eingaben, ⌈9Δ/2⌉+1 nach Augmentierung — bewusst gegen das ursprüngliche Δ, nicht gegen interne Größen.
+4. **Kantenform je Farbe (I.5):** schwarz/blau/grün/rot und die Basiskanten-Sonderform werden exakt gegen die zulässigen Segmentfolgen geprüft.
+5. **Höhen-Invariante I.4:** jede Knoten-y-Koordinate ist ein Vielfaches von k.
+6. **Gitter und Fläche:** Ganzzahligkeit; Breite ≤ 12Δ_eff·N² und Höhe ≤ 18Δ_eff·N³ (N = max(n, 6)) bei Papier-k; bei manuellem k die Ersatzinvariante H ≤ n·(B+k) aus Abschnitt 12.3.
+
+### 13.2 Testkorpus und Mutationstest
+
+Der C++-Treiber `onebend_test` erzeugt **297 Instanzen** pro Lauf: maximal-planare/triangulierte Graphen (direkt 3-zusammenhängend), zufällig 3-zusammenhängende, Räder, Prismen/Antiprismen, den **Ikosaeder** (deg(v_n) = Δ-Sonderfall) sowie nicht-3-zusammenhängende Eingaben (Bäume, Sterne, Spinnen, `random_planar_graph`) über den Korollar-2-Pfad. Der Ordnungs-Checker (Abschnitt 11.1) läuft über jede erzeugte Ordnung. Ein **Mutationsschalter** (`-m`) injiziert gezielte Fehler (Vorzeichen-/Portfehler); der Verifier muss anschlagen — das belegt seine Aussagekraft. Die TypeScript-Suite (vitest) spiegelt diesen Korpus als Property-Tests; sie umfasst insgesamt **180 Tests** (davon 87 im 1-Bend-Modul), einschließlich der k-Läufe aus Abschnitt 12.5.
+
+### 13.3 Ergebnisse
+
+- **C++ `onebend_test`: 297/297 bestanden**, null Fehlschläge (inkl. strikter Steigungs- und Flächenschranken); **TypeScript-Suite: 180/180 bestanden**; der Produktionsbau (`npm run build`) bleibt fehlerfrei.
+- **Ikosaeder** (5-regulär, Δ_eff = 5): korrekt gezeichnet inklusive des deg(v_n) = Δ-Sonderfalls (Abschnitt 11.5).
+- **Kreuzvalidierung:** identische Beispielgraphen liefern in C++ und TypeScript dieselben Steigungszahlen und denselben PASS-Status.
+
+Die interaktive GraphWin-Anwendung wie auch die Webapp führen denselben Verifier nach jedem Layout aus und melden Statistik und PASS/FAIL.
+
 ## Literatur
 
 - **[BKKP26]** M. A. Bekos, E. Katsanou, P. Kindermann, M. E. Pavlidi: *How Many Slopes Does Polynomial Area Cost?* arXiv:2605.31098, 2026.
 - **[BK98]** T. Biedl, G. Kant: *A better heuristic for orthogonal graph drawings.* Comput. Geom. 9(3):159–180, 1998.
 - **[KPP13]** B. Keszegh, J. Pach, D. Pálvölgyi: *Drawing planar graphs of bounded degree with few slopes.* SIAM J. Discrete Math. 27(2):1171–1183, 2013 (arXiv:1009.1315).
 - **[KB92]** G. Kant, H. L. Bodlaender: *Triangulating planar graphs while minimizing the maximum degree.* SWAT 1992, LNCS 621, S. 258–271.
+- **[Kant96]** G. Kant: *Drawing planar graphs using the canonical ordering.* Algorithmica 16(1):4–32, 1996.
 - **[RT86]** P. Rosenstiehl, R. E. Tarjan: *Rectilinear planar layouts and bipolar orientations of planar graphs.* Discrete Comput. Geom. 1:343–353, 1986.
 - **[TT86]** R. Tamassia, I. G. Tollis: *A unified approach to visibility representations of planar graphs.* Discrete Comput. Geom. 1:321–341, 1986.
