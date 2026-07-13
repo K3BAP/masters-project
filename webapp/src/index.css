@@ -116,6 +116,14 @@ main {
    in der neuen Zeile rechtsbuendig (statt links wie bei einem Spacer-Div,
    der beim Umbruch mit auf die naechste Zeile rutschen wuerde). */
 .editor-toolbar .push-right { margin-left: auto; }
+.editor-import-error {
+  background: rgba(225, 87, 89, 0.15);
+  color: var(--bad);
+  border: 1px solid var(--bad);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
 .editor-canvas {
   background: #fbfbf8;
   border-radius: 6px;

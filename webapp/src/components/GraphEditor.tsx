@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react';
 import type { InputIssues } from '../algorithm/embedding';
 import type { InputGraph, Point } from '../algorithm/types';
+import { GraphMLError, graphMLToGraph, graphToGraphML } from '../graphml';
+import type { GraphMLErrorCode } from '../graphml';
 import { useI18n } from '../i18n';
+import type { MsgKey } from '../i18n';
 import { svgPoint } from './svgUtils';
 
 type Mode = 'node' | 'edge' | 'move' | 'delete';
@@ -10,19 +13,54 @@ interface Props {
   graph: InputGraph;
   issues: InputIssues;
   onChange: (g: InputGraph) => void;
+  /** Import ersetzt den Graphen wie ein Galerie-Load (verwirft Ergebnisse). */
+  onImport: (g: InputGraph) => void;
   /** In der Ergebnisansicht ausgewaehlter Knoten (Quermarkierung). */
   selectedNode?: number | null;
 }
 
+const IMPORT_ERROR_KEY: Record<GraphMLErrorCode, MsgKey> = {
+  'invalid-xml': 'graphml_err_invalid_xml',
+  'no-graph': 'graphml_err_no_graph',
+  'empty': 'graphml_err_empty',
+  'unknown-node': 'graphml_err_unknown_node',
+};
+
 const VIEW = 640;
 
-export function GraphEditor({ graph, issues, onChange, selectedNode = null }: Props) {
+export function GraphEditor({ graph, issues, onChange, onImport, selectedNode = null }: Props) {
   const { t } = useI18n();
   const svgRef = useRef<SVGSVGElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<Mode>('node');
   const [dragNode, setDragNode] = useState<number | null>(null);
   const [edgeFrom, setEdgeFrom] = useState<number | null>(null);
   const [cursor, setCursor] = useState<Point | null>(null);
+  const [importError, setImportError] = useState<GraphMLErrorCode | null>(null);
+
+  const exportGraphML = () => {
+    const blob = new Blob([graphToGraphML(graph)], { type: 'application/xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'graph.graphml';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importGraphML = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        onImport(graphMLToGraph(String(reader.result)));
+        setImportError(null);
+      } catch (e) {
+        setImportError(e instanceof GraphMLError ? e.code : 'invalid-xml');
+      }
+    };
+    reader.onerror = () => setImportError('invalid-xml');
+    reader.readAsText(file);
+  };
 
   const toLocal = (ev: React.MouseEvent): Point =>
     svgPoint(svgRef.current!, ev.clientX, ev.clientY);
@@ -166,13 +204,30 @@ export function GraphEditor({ graph, issues, onChange, selectedNode = null }: Pr
             {label}
           </button>
         ))}
-        <button
-          className="push-right"
-          onClick={() => onChange({ n: 0, edges: [], pos: [] })}
-        >
+        <button className="push-right" onClick={exportGraphML}>
+          {t('editor_export')}
+        </button>
+        <button onClick={() => fileRef.current?.click()}>
+          {t('editor_import')}
+        </button>
+        <button onClick={() => onChange({ n: 0, edges: [], pos: [] })}>
           {t('editor_clear')}
         </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".graphml,.xml,application/xml"
+          style={{ display: 'none' }}
+          onChange={(ev) => {
+            const file = ev.target.files?.[0];
+            if (file) importGraphML(file);
+            ev.target.value = ''; // gleiche Datei erneut waehlbar machen
+          }}
+        />
       </div>
+      {importError && (
+        <div className="editor-import-error">{t(IMPORT_ERROR_KEY[importError])}</div>
+      )}
       <svg
         ref={svgRef}
         className="editor-canvas"

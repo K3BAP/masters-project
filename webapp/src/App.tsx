@@ -85,6 +85,14 @@ export default function App() {
     setSelected(null); // Indizes koennen sich verschieben (Loeschen)
   };
 
+  // Graph vollstaendig ersetzen (Galerie, Zufall, GraphML-Import): wie eine
+  // Bearbeitung, aber die alten Ergebnisse werden verworfen.
+  const loadGraph = (g: InputGraph) => {
+    updateGraph(g);
+    setResult(null);
+    setObResult(null);
+  };
+
   const statusText = graph.n < 2
     ? t('status_min_nodes')
     : issues.disconnected
@@ -144,11 +152,12 @@ export default function App() {
 
       <main>
         <section className="left">
-          <Gallery onLoad={(g) => { updateGraph(g); setResult(null); setObResult(null); }} />
+          <Gallery onLoad={loadGraph} />
           <GraphEditor
             graph={graph}
             issues={issues}
             onChange={updateGraph}
+            onImport={loadGraph}
             selectedNode={selected}
           />
         </section>

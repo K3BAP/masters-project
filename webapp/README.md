@@ -45,6 +45,13 @@ die Webapp eigenständige **TypeScript-Ports** (`src/algorithm/`,
 - **Beispiele + Zufallsgenerator**: Oktaeder (Theorem-4-Ausnahme), Ikosaeder
   (Theorem-1-Sonderfall deg(vₙ)=Δ), Antiprisma, Räder, Stern, Gitter; zufällige
   planare Graphen über Delaunay-Triangulierung mit Dichteregler.
+- **GraphML-Import/-Export**: der aktuelle Editorgraph lässt sich als
+  standardkonformes GraphML herunterladen (die Zeichnungskoordinaten werden
+  über eigene `x`/`y`-Schlüssel mitgeschrieben, ein Export → Import reproduziert
+  den Graphen exakt) und eine GraphML-Datei wieder einlesen. Der Importer ist
+  tolerant (beliebige Knoten-IDs, Richtung wird ignoriert, Schleifen/Duplikate
+  entfernt; fehlende Koordinaten → Kreis-Layout, auch yEd-`<y:Geometry>`) und
+  meldet ungültige Dateien mit übersetzter Fehlermeldung.
 - **Schrittansicht**: Theorem 4 inkrementell entlang der st-Nummerierung
   (Pending-Kanten-Stummel, Median-Hervorhebung); Theorem 1 über vollständige
   **Snapshots** pro Konstruktionsschritt — die Cut-Streckungen verschieben auch
