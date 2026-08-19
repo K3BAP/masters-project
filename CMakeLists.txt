@@ -81,3 +81,12 @@ add_executable(onebend_slopes onebend_slopes.cpp onebend_core.cpp
                canonical_order.cpp planar_aug.cpp)
 target_include_directories(onebend_slopes PRIVATE "${LEDA_ROOT_DIR}/incl")
 target_link_libraries(onebend_slopes PRIVATE LEDA)
+
+# ==========================================
+# Systematische Vermessung (headless, CSV)
+# ==========================================
+add_executable(measure measure.cpp graph_families.cpp
+               slopes_core.cpp onebend_core.cpp
+               canonical_order.cpp planar_aug.cpp)
+target_include_directories(measure PRIVATE "${LEDA_ROOT_DIR}/incl")
+target_link_libraries(measure PRIVATE LEDA)

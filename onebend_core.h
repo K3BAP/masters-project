@@ -63,10 +63,19 @@ struct OneBendResult {
     std::string error;                // leer = Erfolg
 };
 
+// Untergrenze fuer ein manuell gesetztes k: die steilen Steigungen +-k/j
+// muessen k/j > 1 bleiben, damit sie nicht mit den flachen j/(Deff-3) < 1
+// kollidieren. Identisch zur Pruefung der Webanwendung.
+inline long long onebend_k_min(int delta_eff) { return (long long)delta_eff - 2; }
+
 // Berechnet die Zeichnung. G wird waehrend der Berechnung augmentiert
 // und vor der Rueckgabe wieder auf die urspruenglichen Kanten reduziert.
+// k_override: 0 = Papier-Wahl k = 4*Deff*n^2 (Flaechenbeweis); jeder Wert
+// >= onebend_k_min(Deff) waehlt den Zeilenabstand stattdessen frei. Nur
+// die Papier-Wahl garantiert die Flaechenschranken des Papers.
 bool compute_onebend_drawing(leda::graph& G, OneBendResult& result,
-                             bool verbose = false);
+                             bool verbose = false,
+                             long long k_override = 0);
 
 // Prueft die Spezifikationen aus dem Paper auf der fertigen Zeichnung:
 // Planaritaet (exakte Ganzzahlarithmetik), <= 1 Knick pro Kante,

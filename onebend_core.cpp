@@ -559,7 +559,8 @@ SlopeClass classify_slope(ll dx, ll dy, ll k, int D3) {
 // =====================================================================
 // Hauptfunktion
 // =====================================================================
-bool compute_onebend_drawing(graph& G, OneBendResult& result, bool verbose) {
+bool compute_onebend_drawing(graph& G, OneBendResult& result, bool verbose,
+                             ll k_override) {
     result.error.clear();
     result.stats = OneBendStats();
     result.v1 = result.v2 = result.vn = nil;
@@ -638,7 +639,19 @@ bool compute_onebend_drawing(graph& G, OneBendResult& result, bool verbose) {
     forall_nodes(v, G) delta_aug = std::max(delta_aug, G.outdeg(v));
 
     const int Deff = std::max(delta_aug, 5);
-    const ll k = 4LL * Deff * (ll)n * (ll)n;
+    ll k = 4LL * Deff * (ll)n * (ll)n;      // Papier-Wahl (Flaechenbeweis)
+    if (k_override > 0) {
+        const ll kmin = onebend_k_min(Deff);
+        if (k_override < kmin) {
+            G.del_edges(reverse_edges); G.del_edges(aug_reversals); G.del_edges(aug_edges);
+            char b[128];
+            snprintf(b, sizeof b, "k = %lld ist kleiner als das Minimum %lld.",
+                     k_override, kmin);
+            result.error = b;
+            return false;
+        }
+        k = k_override;
+    }
     result.stats.n = n;
     result.stats.m = m;
     result.stats.delta_aug = delta_aug;
