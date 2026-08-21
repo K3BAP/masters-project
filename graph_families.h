@@ -16,6 +16,11 @@
 
 #include <LEDA/graph/graph.h>
 
+// Reproduzierbarer Seed aus Grundwert und Schleifenindizes. Damit haengt
+// jede erzeugte Instanz nur von ihrer Position im Testplan ab und nicht
+// vom Zustand, den vorherige Aufrufe im Zufallsgenerator hinterlassen.
+unsigned gf_mix(unsigned a, unsigned b, unsigned c, unsigned d);
+
 // Schleifen, Mehrfach- und antiparallele Kanten entfernen.
 void gf_sanitize(leda::graph& G);
 

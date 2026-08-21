@@ -10,6 +10,18 @@
 
 using namespace leda;
 
+unsigned gf_mix(unsigned a, unsigned b, unsigned c, unsigned d) {
+    unsigned long long x = 0x9e3779b97f4a7c15ULL;
+    const unsigned in[4] = { a, b, c, d };
+    for (int i = 0; i < 4; i++) {
+        x ^= in[i] + 0x9e3779b9ULL + (x << 6) + (x >> 2);
+        x *= 0xbf58476d1ce4e5b9ULL;
+        x ^= x >> 31;
+    }
+    unsigned r = (unsigned)(x & 0x7fffffffULL);
+    return r ? r : 1u;          // 0 bedeutet bei den Tests "kein Seed"
+}
+
 void gf_sanitize(graph& G) {
     Delete_Loops(G);
     Make_Simple(G);

@@ -17,6 +17,8 @@
 
 #include "onebend_core.h"
 
+#include "graph_families.h"
+
 #include <LEDA/graph/graph_gen.h>
 #include <LEDA/graph/graph_misc.h>
 
@@ -215,7 +217,7 @@ static void build_grid(graph& G, int w, int h) {
 }
 
 int main(int argc, char** argv) {
-    int seed = 0, max_extra = 0;
+    int seed = 1, max_extra = 0;   // fester Standardseed: der Lauf ist reproduzierbar
     std::vector<std::string> files;
     for (int i = 1; i < argc; i++) {
         std::string a(argv[i]);
@@ -225,7 +227,10 @@ int main(int argc, char** argv) {
         else if (a == "-n" && i + 1 < argc) max_extra = atoi(argv[++i]);
         else files.push_back(a);
     }
-    if (seed != 0) rand_int.set_seed(seed);
+    // Immer setzen, nicht nur bei -s: Sonst starten die Spezialfaelle,
+    // die vor den Zufallsinstanzen laufen, aus einem uhrzeitabhaengigen
+    // Zustand -- und der Mutationstest zieht seine Stoerungen daraus.
+    rand_int.set_seed(seed);
 
     graph G;
     char name[128];
@@ -284,10 +289,13 @@ int main(int argc, char** argv) {
     for (size_t si = 0; si < sizeof(sizes) / sizeof(int); si++) {
         int n = sizes[si];
         for (int r = 0; r < reps; r++) {
-            maximal_planar_graph(G, n);
+            rand_int.set_seed((int)gf_mix(seed, n, r, 0));
+            rand_int.set_seed((int)gf_mix(seed, n, 0, 7));
+        maximal_planar_graph(G, n);
             snprintf(name, sizeof name, "maximal_planar n=%d #%d", n, r);
             run_case(G, name);
 
+            rand_int.set_seed((int)gf_mix(seed, n, r, 1));
             triangulated_planar_graph(G, n);
             snprintf(name, sizeof name, "triangulated n=%d #%d", n, r);
             run_case(G, name);
@@ -295,7 +303,7 @@ int main(int argc, char** argv) {
             const int densities[] = { n, 3 * n / 2, 2 * n, 3 * n - 6 };
             for (int di = 0; di < 4; di++) {
                 int mm = std::max(1, densities[di]);
-                random_planar_graph(G, n, mm);
+                gf_random_planar(G, n, mm, gf_mix(seed, n, r, 2 + di));
                 snprintf(name, sizeof name, "random_planar n=%d m=%d #%d", n, mm, r);
                 run_case(G, name);
             }
@@ -307,7 +315,7 @@ int main(int argc, char** argv) {
         maximal_planar_graph(G, n);
         snprintf(name, sizeof name, "maximal_planar n=%d (gross)", n);
         run_case(G, name);
-        random_planar_graph(G, n, 2 * n);
+        gf_random_planar(G, n, 2 * n, gf_mix(seed, n, 0, 8));
         snprintf(name, sizeof name, "random_planar n=%d m=%d (gross)", n, 2 * n);
         run_case(G, name);
     }

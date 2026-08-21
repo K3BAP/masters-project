@@ -62,7 +62,8 @@ target_include_directories(biedl_kant_slopes PRIVATE "${LEDA_ROOT_DIR}/incl")
 target_link_libraries(biedl_kant_slopes PRIVATE LEDA)
 
 # Headless-Stresstest (Algorithmus + geometrischer Verifier)
-add_executable(slopes_test slopes_test.cpp slopes_core.cpp planar_aug.cpp)
+add_executable(slopes_test slopes_test.cpp slopes_core.cpp planar_aug.cpp
+               graph_families.cpp)
 target_include_directories(slopes_test PRIVATE "${LEDA_ROOT_DIR}/incl")
 target_link_libraries(slopes_test PRIVATE LEDA)
 
@@ -72,7 +73,7 @@ target_link_libraries(slopes_test PRIVATE LEDA)
 
 # Headless-Stresstest
 add_executable(onebend_test onebend_test.cpp onebend_core.cpp
-               canonical_order.cpp planar_aug.cpp)
+               canonical_order.cpp planar_aug.cpp graph_families.cpp)
 target_include_directories(onebend_test PRIVATE "${LEDA_ROOT_DIR}/incl")
 target_link_libraries(onebend_test PRIVATE LEDA)
 
