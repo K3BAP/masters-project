@@ -583,7 +583,7 @@ static void sweep_kwahl(const std::string& paper_path) {
 int main(int argc, char** argv) {
     bool thm4 = false, thm1 = false, ksweep = false, selbst = false, kwahl = false;
     int reps = 10, max4 = 1024, max1 = 256;
-    std::string out, paper = "bericht/abbildungen/paper-fig1.graphml";
+    std::string out, paper = "abbildungen/paper-fig1.graphml";
 
     for (int i = 1; i < argc; i++) {
         std::string a(argv[i]);

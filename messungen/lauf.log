@@ -1,0 +1,9 @@
+[1/5] n-Sweep (Prisma, Antiprisma)
+[2/5] Delta-Sweep (Rad, Doppelrad)
+[3/5] Zufallstriangulierungen (10 Seeds)
+[4/5] Dichtesweep und duenne Familien
+[5/5] Referenzinstanzen
+[k] k-Sweep (nur Theorem 1)
+[k] k-Wahl: Modellprobe und Faustregel
+=============================================
+Zeilen: 1016  nicht verifiziert: 0  Dauer: 192.755 s

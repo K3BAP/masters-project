@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Beispielgraph aus Figure 1 von Bekos, Katsanou, Kindermann, Pavlidi,
+     "How Many Slopes Does Polynomial Area Cost?" (arXiv:2605.31098).
+     13 Knoten, 25 Kanten, Delta = 5, 3-zusammenhaengend.
+     Knoten 0..12 entsprechen v1..v13 des Papers. -->
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <key id="x" for="node" attr.name="x" attr.type="double"/>
+  <key id="y" for="node" attr.name="y" attr.type="double"/>
+  <graph id="G" edgedefault="undirected">
+    <node id="n0"><data key="x">60</data><data key="y">560</data></node>
+    <node id="n1"><data key="x">580</data><data key="y">560</data></node>
+    <node id="n2"><data key="x">300</data><data key="y">470</data></node>
+    <node id="n3"><data key="x">150</data><data key="y">400</data></node>
+    <node id="n4"><data key="x">235</data><data key="y">400</data></node>
+    <node id="n5"><data key="x">390</data><data key="y">340</data></node>
+    <node id="n6"><data key="x">500</data><data key="y">340</data></node>
+    <node id="n7"><data key="x">390</data><data key="y">265</data></node>
+    <node id="n8"><data key="x">150</data><data key="y">205</data></node>
+    <node id="n9"><data key="x">270</data><data key="y">130</data></node>
+    <node id="n10"><data key="x">350</data><data key="y">130</data></node>
+    <node id="n11"><data key="x">430</data><data key="y">130</data></node>
+    <node id="n12"><data key="x">430</data><data key="y">55</data></node>
+    <edge source="n0" target="n1"/>
+    <edge source="n0" target="n2"/>
+    <edge source="n0" target="n3"/>
+    <edge source="n0" target="n8"/>
+    <edge source="n0" target="n12"/>
+    <edge source="n1" target="n2"/>
+    <edge source="n1" target="n6"/>
+    <edge source="n1" target="n12"/>
+    <edge source="n2" target="n4"/>
+    <edge source="n2" target="n5"/>
+    <edge source="n2" target="n7"/>
+    <edge source="n3" target="n4"/>
+    <edge source="n3" target="n8"/>
+    <edge source="n4" target="n7"/>
+    <edge source="n5" target="n6"/>
+    <edge source="n5" target="n7"/>
+    <edge source="n6" target="n7"/>
+    <edge source="n6" target="n11"/>
+    <edge source="n7" target="n8"/>
+    <edge source="n8" target="n9"/>
+    <edge source="n9" target="n10"/>
+    <edge source="n9" target="n12"/>
+    <edge source="n10" target="n11"/>
+    <edge source="n10" target="n12"/>
+    <edge source="n11" target="n12"/>
+  </graph>
+</graphml>
